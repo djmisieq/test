@@ -115,6 +115,20 @@ function Layout({
             </li>
             <li>
               <button 
+                onClick={() => setActiveView('menu-planner')}
+                className={`w-full text-left flex items-center p-3 rounded-lg transition-colors ${
+                  activeView === 'menu-planner' 
+                    ? (darkMode ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800') 
+                    : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200')
+                }`}
+              >
+                <span className="mr-3">🍽️</span>
+                <span className="flex-grow">Planer Menu</span>
+                <span className={`px-2 py-1 rounded-full text-xs ${darkMode ? 'bg-purple-600' : 'bg-purple-200'}`}>Nowe</span>
+              </button>
+            </li>
+            <li>
+              <button 
                 onClick={() => setActiveView('templates')}
                 className={`w-full text-left flex items-center p-3 rounded-lg transition-colors ${
                   activeView === 'templates' 
@@ -184,6 +198,7 @@ function Layout({
             {activeView === 'shopping-list' && 'Lista Zakupów'}
             {activeView === 'stores' && 'Sklepy'}
             {activeView === 'budget' && 'Budżet'}
+            {activeView === 'menu-planner' && 'Planer Menu'}
             {activeView === 'templates' && 'Szablony'}
             {activeView === 'categories' && 'Kategorie'}
             {activeView === 'settings' && 'Ustawienia'}
