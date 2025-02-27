@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import StoreSelector from './StoreSelector';
 
 // Komponent dedykowany dla widoku listy zakupów
 function ShoppingListView({ 
@@ -13,6 +14,8 @@ function ShoppingListView({
   newTemplateName, setNewTemplateName,
   saveAsTemplate,
   templates, loadTemplate,
+  stores, updateItemStores,
+  filterStore, setFilterStore,
   darkMode
 }) {
   // Stan do śledzenia zwijania/rozwijania kategorii
@@ -31,7 +34,8 @@ function ShoppingListView({
         id: Date.now(), 
         name: newItem, 
         category: newItemCategory || (categories.length > 0 ? categories[0] : 'Inne'),
-        completed: false 
+        completed: false,
+        stores: [] // Dodano pustą tablicę dla sklepów
       }]);
       setNewItem('');
       if (categories.length > 0) {
@@ -81,10 +85,27 @@ function ShoppingListView({
     setSaveTemplateModalOpen(false);
   };
 
+  // Funkcja filtrująca produkty na podstawie kategorii i sklepów
+  const filterItems = (items) => {
+    let result = [...items];
+    
+    // Filtrujemy według kategorii
+    if (filterCategory !== 'Wszystkie') {
+      result = result.filter(item => item.category === filterCategory);
+    }
+    
+    // Filtrujemy według sklepu
+    if (filterStore !== 'all') {
+      result = result.filter(
+        item => item.stores && item.stores.includes(filterStore)
+      );
+    }
+    
+    return result;
+  };
+
   // Filtrowanie produktów
-  const filteredItems = filterCategory === 'Wszystkie' 
-    ? items 
-    : items.filter(item => item.category === filterCategory);
+  const filteredItems = filterItems(items);
 
   // Grupowanie produktów według kategorii
   const groupedItems = filteredItems.reduce((acc, item) => {
@@ -183,6 +204,27 @@ function ShoppingListView({
               </svg>
             </div>
           </div>
+          
+          {/* Filtr sklepów */}
+          {stores && stores.length > 0 && (
+            <div className="relative">
+              <select
+                value={filterStore}
+                onChange={(e) => setFilterStore(e.target.value)}
+                className={`px-3 py-2 rounded-lg appearance-none pr-8 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} transition-colors`}
+              >
+                <option value="all">🏪 Wszystkie sklepy</option>
+                {stores.map(store => (
+                  <option key={store.id} value={store.id}>{store.name}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                </svg>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mt-6">
@@ -274,19 +316,32 @@ function ShoppingListView({
                                     {item.name}
                                   </span>
                                 </div>
-                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button 
-                                    onClick={() => startEditItem(item)}
-                                    className={`p-1 ml-1 rounded-full ${darkMode ? 'text-blue-400 hover:bg-gray-700' : 'text-blue-500 hover:bg-gray-200'}`}
-                                  >
-                                    ✎
-                                  </button>
-                                  <button 
-                                    onClick={() => removeItem(item.id)}
-                                    className={`p-1 ml-1 rounded-full ${darkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-500 hover:bg-gray-200'}`}
-                                  >
-                                    ✖
-                                  </button>
+                                <div className="flex items-center">
+                                  {/* Store Selector */}
+                                  {stores && stores.length > 0 && (
+                                    <StoreSelector
+                                      itemId={item.id}
+                                      stores={stores}
+                                      selectedStores={item.stores}
+                                      updateItemStores={updateItemStores}
+                                      darkMode={darkMode}
+                                    />
+                                  )}
+                                  
+                                  <div className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity flex">
+                                    <button 
+                                      onClick={() => startEditItem(item)}
+                                      className={`p-1 ml-1 rounded-full ${darkMode ? 'text-blue-400 hover:bg-gray-700' : 'text-blue-500 hover:bg-gray-200'}`}
+                                    >
+                                      ✎
+                                    </button>
+                                    <button 
+                                      onClick={() => removeItem(item.id)}
+                                      className={`p-1 ml-1 rounded-full ${darkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-500 hover:bg-gray-200'}`}
+                                    >
+                                      ✖
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             )}
