@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import ShoppingListView from './components/ShoppingListView';
 import TemplatesView from './components/TemplatesView';
@@ -643,6 +643,45 @@ function App() {
     );
   };
 
+  // Komponent renderujący widok przepisów
+  const RecipesRoutes = () => (
+    <Routes>
+      <Route path="/" element={
+        <RecipesView
+          recipes={recipes}
+          deleteRecipe={deleteRecipe}
+          categories={categories}
+          darkMode={darkMode}
+        />
+      } />
+      <Route path="/recipe/:id" element={
+        <RecipeDetail
+          recipes={recipes}
+          addItemsToShoppingList={addItemsToShoppingList}
+          fridgeItems={fridgeItems}
+          darkMode={darkMode}
+        />
+      } />
+      <Route path="/recipe/edit/:id" element={
+        <RecipeEditor
+          recipes={recipes}
+          saveRecipe={saveRecipe}
+          categories={categories}
+          darkMode={darkMode}
+        />
+      } />
+      <Route path="/recipe/new" element={
+        <RecipeEditor
+          recipes={recipes}
+          saveRecipe={saveRecipe}
+          categories={categories}
+          darkMode={darkMode}
+        />
+      } />
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  );
+
   // Renderowanie odpowiedniego widoku
   const renderActiveView = () => {
     switch(activeView) {
@@ -660,46 +699,7 @@ function App() {
         );
         
       case 'recipes':
-        // Renderowanie komponentów związanych z przepisami w kontenerze Router
-        return (
-          <Router>
-            <Routes>
-              <Route path="/" element={
-                <RecipesView
-                  recipes={recipes}
-                  deleteRecipe={deleteRecipe}
-                  categories={categories}
-                  darkMode={darkMode}
-                />
-              } />
-              <Route path="/recipe/:id" element={
-                <RecipeDetail
-                  recipes={recipes}
-                  addItemsToShoppingList={addItemsToShoppingList}
-                  fridgeItems={fridgeItems}
-                  darkMode={darkMode}
-                />
-              } />
-              <Route path="/recipe/edit/:id" element={
-                <RecipeEditor
-                  recipes={recipes}
-                  saveRecipe={saveRecipe}
-                  categories={categories}
-                  darkMode={darkMode}
-                />
-              } />
-              <Route path="/recipe/new" element={
-                <RecipeEditor
-                  recipes={recipes}
-                  saveRecipe={saveRecipe}
-                  categories={categories}
-                  darkMode={darkMode}
-                />
-              } />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </Router>
-        );
+        return <RecipesRoutes />;
         
       case 'templates':
         return (
