@@ -14,5 +14,7 @@
             ]
         }
     },
-    "postCreateCommand": "npm install"
+    "forwardPorts": [3000],
+    "postCreateCommand": "npm install",
+    "postStartCommand": "npm start"
 }
