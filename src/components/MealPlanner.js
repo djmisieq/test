@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
-const MealPlanner = ({ addItemsToShoppingList }) => {
+const MealPlanner = ({ addItemsToShoppingList, recipes = [], fridgeItems = [], darkMode }) => {
   const daysOfWeek = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela'];
   const mealTypes = ['Śniadanie', 'Obiad', 'Kolacja'];
   
   // Stan początkowy: pusty plan posiłków na każdy dzień
   const initialMealPlan = daysOfWeek.reduce((plan, day) => {
     plan[day] = mealTypes.reduce((meals, type) => {
-      meals[type] = { name: '', ingredients: [] };
+      meals[type] = { name: '', ingredients: [], recipeId: null };
       return meals;
     }, {});
     return plan;
@@ -18,34 +19,13 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
   const [currentMealPlanName, setCurrentMealPlanName] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [showCustomRecipeModal, setShowCustomRecipeModal] = useState(false);
   const [selectedDay, setSelectedDay] = useState('');
   const [selectedMealType, setSelectedMealType] = useState('');
   const [currentRecipe, setCurrentRecipe] = useState({ name: '', ingredients: [] });
   const [newIngredient, setNewIngredient] = useState({ name: '', category: 'Inne', quantity: '', unit: 'szt.' });
+  const [recipeSearchQuery, setRecipeSearchQuery] = useState('');
   
-  // Przykładowe przepisy - można zastąpić własnymi lub pobrać z API
-  const sampleRecipes = [
-    {
-      name: 'Omlet z warzywami',
-      ingredients: [
-        { name: 'Jajka', category: 'Nabiał', quantity: 2, unit: 'szt.' },
-        { name: 'Papryka', category: 'Warzywa i Owoce', quantity: 1, unit: 'szt.' },
-        { name: 'Cebula', category: 'Warzywa i Owoce', quantity: 0.5, unit: 'szt.' },
-        { name: 'Ser żółty', category: 'Nabiał', quantity: 50, unit: 'g' }
-      ]
-    },
-    {
-      name: 'Spaghetti Bolognese',
-      ingredients: [
-        { name: 'Makaron spaghetti', category: 'Sypkie', quantity: 200, unit: 'g' },
-        { name: 'Mięso mielone', category: 'Mięso i Wędliny', quantity: 300, unit: 'g' },
-        { name: 'Passata pomidorowa', category: 'Inne', quantity: 1, unit: 'szt.' },
-        { name: 'Cebula', category: 'Warzywa i Owoce', quantity: 1, unit: 'szt.' },
-        { name: 'Czosnek', category: 'Warzywa i Owoce', quantity: 2, unit: 'ząbki' }
-      ]
-    }
-  ];
-
   // Kategorie produktów
   const categories = [
     'Warzywa i Owoce', 
@@ -58,7 +38,7 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
   ];
 
   // Jednostki miary
-  const units = ['szt.', 'g', 'kg', 'ml', 'l', 'łyżka', 'łyżeczka', 'szklanka', 'opakowanie', 'ząbki', 'plasterki'];
+  const units = ['szt.', 'g', 'kg', 'ml', 'l', 'łyżka', 'łyżeczka', 'szklanka', 'opak.', 'ząbki', 'plasterki'];
 
   // Ładowanie zapisanych planów posiłków z localStorage
   useEffect(() => {
@@ -81,6 +61,13 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
     setSelectedMealType(mealType);
     setCurrentRecipe(mealPlan[day][mealType] || { name: '', ingredients: [] });
     setShowRecipeModal(true);
+    setRecipeSearchQuery('');
+  };
+
+  // Otwiera modal do tworzenia własnego przepisu
+  const openCustomRecipeModal = () => {
+    setShowRecipeModal(false);
+    setShowCustomRecipeModal(true);
   };
 
   // Obsługa zmiany nazwy przepisu
@@ -96,6 +83,7 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
   // Dodaje nowy składnik do przepisu
   const addIngredient = () => {
     if (newIngredient.name.trim() === '') return;
+    if (!newIngredient.quantity) return;
     
     setCurrentRecipe({
       ...currentRecipe,
@@ -121,11 +109,23 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
     updatedMealPlan[selectedDay][selectedMealType] = currentRecipe;
     setMealPlan(updatedMealPlan);
     setShowRecipeModal(false);
+    setShowCustomRecipeModal(false);
   };
 
-  // Wybiera gotowy przepis z listy
-  const selectSampleRecipe = (recipe) => {
-    setCurrentRecipe(JSON.parse(JSON.stringify(recipe))); // Głęboka kopia
+  // Wybiera przepis z biblioteki
+  const selectRecipe = (recipe) => {
+    const recipeToAdd = {
+      name: recipe.name,
+      ingredients: [...recipe.ingredients],
+      recipeId: recipe.id
+    };
+    setCurrentRecipe(recipeToAdd);
+    setShowRecipeModal(false);
+    
+    // Automatycznie zapisz wybrany przepis do planu
+    const updatedMealPlan = { ...mealPlan };
+    updatedMealPlan[selectedDay][selectedMealType] = recipeToAdd;
+    setMealPlan(updatedMealPlan);
   };
 
   // Zapisuje plan posiłków
@@ -154,7 +154,7 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
     setSavedMealPlans(updatedPlans);
   };
 
-  // Generuje listę zakupów na podstawie planu posiłków
+  // Generuje listę zakupów na podstawie planu posiłków z uwzględnieniem zawartości lodówki
   const generateShoppingList = () => {
     // Zbieramy wszystkie składniki ze wszystkich przepisów
     const ingredients = [];
@@ -175,38 +175,72 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
       if (!groupedIngredients[key]) {
         groupedIngredients[key] = { ...ing };
       } else {
-        groupedIngredients[key].quantity += ing.quantity;
+        groupedIngredients[key].quantity = parseFloat(groupedIngredients[key].quantity) + parseFloat(ing.quantity);
       }
     });
     
-    // Konwersja na listę zakupów
-    const shoppingItems = Object.values(groupedIngredients).map(ing => ({
-      name: `${ing.name} (${ing.quantity} ${ing.unit})`,
-      category: ing.category,
-      completed: false,
-      id: Date.now() + Math.random()
-    }));
+    // Sprawdzanie zawartości lodówki i dostosowanie listy zakupów
+    const shoppingItems = [];
+    
+    Object.values(groupedIngredients).forEach(ing => {
+      // Sprawdzenie czy składnik jest w lodówce
+      const fridgeItem = fridgeItems.find(item => 
+        item.name.toLowerCase() === ing.name.toLowerCase() && 
+        item.unit === ing.unit
+      );
+      
+      if (!fridgeItem) {
+        // Składnika nie ma w lodówce, dodaj całą ilość do listy zakupów
+        shoppingItems.push({
+          name: ing.name,
+          category: ing.category,
+          quantity: parseFloat(ing.quantity),
+          unit: ing.unit,
+          completed: false,
+          id: Date.now() + Math.random()
+        });
+      } else if (parseFloat(fridgeItem.quantity) < parseFloat(ing.quantity)) {
+        // Składnik jest w lodówce, ale w niewystarczającej ilości
+        const neededQuantity = parseFloat(ing.quantity) - parseFloat(fridgeItem.quantity);
+        shoppingItems.push({
+          name: ing.name,
+          category: ing.category,
+          quantity: neededQuantity,
+          unit: ing.unit,
+          completed: false,
+          id: Date.now() + Math.random()
+        });
+      }
+      // Jeśli składnik jest w lodówce w wystarczającej ilości, pomijamy go
+    });
     
     if (shoppingItems.length > 0 && typeof addItemsToShoppingList === 'function') {
       addItemsToShoppingList(shoppingItems);
+      alert(`Dodano ${shoppingItems.length} produktów do listy zakupów.`);
+    } else if (shoppingItems.length === 0) {
+      alert('Wszystkie potrzebne produkty są już w lodówce!');
     }
   };
+  
+  // Filtrowanie przepisów według wyszukiwanej frazy
+  const filteredRecipes = recipes.filter(recipe => 
+    recipe.name.toLowerCase().includes(recipeSearchQuery.toLowerCase()) ||
+    recipe.ingredients.some(ing => ing.name.toLowerCase().includes(recipeSearchQuery.toLowerCase()))
+  );
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Planer Posiłków</h2>
-      
+    <div className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} rounded-lg shadow-md p-6`}>
       {/* Pasek akcji */}
       <div className="flex flex-wrap gap-3 mb-6">
         <button 
           onClick={() => setShowSaveModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           Zapisz Plan
         </button>
         <button 
           onClick={generateShoppingList}
-          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
         >
           Generuj Listę Zakupów
         </button>
@@ -215,20 +249,20 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
       {/* Zapisane plany */}
       {savedMealPlans.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-2 text-gray-700 dark:text-gray-200">Zapisane Plany</h3>
+          <h3 className="text-lg font-semibold mb-2">Zapisane Plany</h3>
           <div className="flex flex-wrap gap-2">
             {savedMealPlans.map((plan, index) => (
-              <div key={index} className="border p-2 rounded dark:border-gray-600 flex items-center gap-2">
-                <span className="text-gray-800 dark:text-gray-200">{plan.name}</span>
+              <div key={index} className={`border p-2 rounded flex items-center gap-2 ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                <span>{plan.name}</span>
                 <button 
                   onClick={() => loadMealPlan(index)} 
-                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  className="text-blue-600 hover:text-blue-800"
                 >
                   Wczytaj
                 </button>
                 <button 
                   onClick={() => deleteMealPlan(index)}
-                  className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  className="text-red-600 hover:text-red-800"
                 >
                   Usuń
                 </button>
@@ -243,9 +277,9 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
         <table className="min-w-full border-collapse">
           <thead>
             <tr>
-              <th className="p-2 border dark:border-gray-600"></th>
+              <th className={`p-2 border ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}></th>
               {mealTypes.map(mealType => (
-                <th key={mealType} className="p-2 border dark:border-gray-600 text-gray-800 dark:text-gray-200">
+                <th key={mealType} className={`p-2 border ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}>
                   {mealType}
                 </th>
               ))}
@@ -254,33 +288,70 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
           <tbody>
             {daysOfWeek.map(day => (
               <tr key={day}>
-                <td className="p-2 border dark:border-gray-600 font-medium text-gray-800 dark:text-gray-200">{day}</td>
+                <td className={`p-2 border font-medium ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}>{day}</td>
                 {mealTypes.map(mealType => (
-                  <td key={`${day}-${mealType}`} className="p-2 border dark:border-gray-600">
+                  <td key={`${day}-${mealType}`} className={`p-2 border ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}>
                     {mealPlan[day][mealType].name ? (
                       <div className="relative group">
-                        <div className="text-gray-800 dark:text-gray-200">{mealPlan[day][mealType].name}</div>
-                        <div className="absolute hidden group-hover:block bg-white dark:bg-gray-700 shadow-md rounded p-2 z-10 top-full left-0 w-48">
-                          <strong className="block mb-1 text-gray-800 dark:text-gray-200">Składniki:</strong>
+                        <div className="font-medium">{mealPlan[day][mealType].name}</div>
+                        <div className={`absolute hidden group-hover:block ${darkMode ? 'bg-gray-600' : 'bg-white'} shadow-md rounded p-2 z-10 top-full left-0 w-64`}>
+                          <strong className="block mb-1">Składniki:</strong>
                           <ul className="text-sm">
-                            {mealPlan[day][mealType].ingredients.map((ing, idx) => (
-                              <li key={idx} className="text-gray-700 dark:text-gray-300">
-                                {ing.name} ({ing.quantity} {ing.unit})
-                              </li>
-                            ))}
+                            {mealPlan[day][mealType].ingredients.map((ing, idx) => {
+                              // Sprawdzenie czy składnik jest w lodówce
+                              const fridgeItem = fridgeItems.find(item => 
+                                item.name.toLowerCase() === ing.name.toLowerCase() && 
+                                item.unit === ing.unit
+                              );
+                              
+                              const isInFridge = fridgeItem && parseFloat(fridgeItem.quantity) >= parseFloat(ing.quantity);
+                              const isPartiallyInFridge = fridgeItem && parseFloat(fridgeItem.quantity) < parseFloat(ing.quantity);
+                              
+                              return (
+                                <li key={idx} className={`
+                                  ${isInFridge ? 'text-green-600' : ''}
+                                  ${isPartiallyInFridge ? 'text-yellow-600' : ''}
+                                `}>
+                                  {ing.name} ({ing.quantity} {ing.unit})
+                                  {isInFridge && ' ✅'}
+                                  {isPartiallyInFridge && ' ⚠️'}
+                                </li>
+                              );
+                            })}
                           </ul>
+                          {mealPlan[day][mealType].recipeId && (
+                            <Link 
+                              to={`/recipe/${mealPlan[day][mealType].recipeId}`}
+                              className="mt-2 block text-blue-600 hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Zobacz pełny przepis
+                            </Link>
+                          )}
                         </div>
-                        <button 
-                          onClick={() => openRecipeModal(day, mealType)}
-                          className="absolute right-0 top-0 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                        >
-                          Edytuj
-                        </button>
+                        <div className="absolute right-0 top-0 flex">
+                          <button 
+                            onClick={() => openRecipeModal(day, mealType)}
+                            className="text-blue-600 hover:text-blue-800 mr-1"
+                          >
+                            Zmień
+                          </button>
+                          <button 
+                            onClick={() => {
+                              const updatedMealPlan = { ...mealPlan };
+                              updatedMealPlan[day][mealType] = { name: '', ingredients: [] };
+                              setMealPlan(updatedMealPlan);
+                            }}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <button 
                         onClick={() => openRecipeModal(day, mealType)}
-                        className="w-full h-full p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        className={`w-full h-full p-1 ${darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
                       >
                         + Dodaj posiłek
                       </button>
@@ -296,25 +367,25 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
       {/* Modal zapisywania planu */}
       {showSaveModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">Zapisz Plan Posiłków</h3>
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 max-w-md w-full`}>
+            <h3 className="text-xl font-bold mb-4">Zapisz Plan Posiłków</h3>
             <input
               type="text"
               placeholder="Nazwa planu posiłków"
               value={currentMealPlanName}
               onChange={(e) => setCurrentMealPlanName(e.target.value)}
-              className="w-full p-2 border rounded mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className={`w-full p-2 border rounded mb-4 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
             />
             <div className="flex justify-end gap-2">
               <button 
                 onClick={() => setShowSaveModal(false)}
-                className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                className={`px-4 py-2 border rounded-md ${darkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'}`}
               >
                 Anuluj
               </button>
               <button 
                 onClick={saveMealPlan}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
                 Zapisz
               </button>
@@ -323,61 +394,114 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
         </div>
       )}
       
-      {/* Modal dodawania/edycji przepisu */}
+      {/* Modal wyboru przepisu */}
       {showRecipeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">
-              {selectedDay} - {selectedMealType}
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto`}>
+            <h3 className="text-xl font-bold mb-4">
+              Dodaj posiłek: {selectedDay} - {selectedMealType}
             </h3>
             
-            {/* Wybór gotowego przepisu */}
-            <div className="mb-4">
-              <h4 className="font-medium mb-2 text-gray-700 dark:text-gray-200">Szybki wybór przepisu:</h4>
-              <div className="flex flex-wrap gap-2">
-                {sampleRecipes.map((recipe, idx) => (
-                  <button 
-                    key={idx}
-                    onClick={() => selectSampleRecipe(recipe)}
-                    className="px-3 py-1 border rounded-full text-sm hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-200"
-                  >
-                    {recipe.name}
-                  </button>
-                ))}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-medium">Wybierz z biblioteki przepisów:</h4>
+                <button 
+                  onClick={openCustomRecipeModal}
+                  className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                >
+                  Stwórz własny
+                </button>
               </div>
+              
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="Szukaj przepisu..."
+                  value={recipeSearchQuery}
+                  onChange={(e) => setRecipeSearchQuery(e.target.value)}
+                  className={`w-full p-2 border rounded mb-2 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+              </div>
+              
+              {filteredRecipes.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredRecipes.map((recipe) => (
+                    <div 
+                      key={recipe.id} 
+                      className={`border rounded p-3 cursor-pointer hover:shadow-md ${darkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-50'}`}
+                      onClick={() => selectRecipe(recipe)}
+                    >
+                      <div className="font-bold mb-1">{recipe.name}</div>
+                      <div className="text-sm">
+                        <span className="font-medium">Składniki:</span> 
+                        {recipe.ingredients.slice(0, 3).map(i => i.name).join(', ')}
+                        {recipe.ingredients.length > 3 && '...'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : recipes.length > 0 ? (
+                <p className="text-center py-4">
+                  Brak wyników dla "{recipeSearchQuery}". Spróbuj innej frazy lub stwórz własny przepis.
+                </p>
+              ) : (
+                <p className="text-center py-4">
+                  Brak przepisów w bibliotece. Możesz utworzyć własny przepis lub dodać nowe w zakładce Przepisy.
+                </p>
+              )}
             </div>
+            
+            <div className="flex justify-end">
+              <button 
+                onClick={() => setShowRecipeModal(false)}
+                className={`px-4 py-2 border rounded-md ${darkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'}`}
+              >
+                Anuluj
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal tworzenia własnego przepisu */}
+      {showCustomRecipeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto`}>
+            <h3 className="text-xl font-bold mb-4">
+              Utwórz własny posiłek: {selectedDay} - {selectedMealType}
+            </h3>
             
             {/* Nazwa przepisu */}
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
+              <label className="block text-sm font-medium mb-1">
                 Nazwa posiłku:
               </label>
               <input
                 type="text"
                 value={currentRecipe.name}
                 onChange={handleRecipeNameChange}
-                className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className={`w-full p-2 border rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                 placeholder="np. Omlet z warzywami"
               />
             </div>
             
             {/* Składniki */}
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
+              <label className="block text-sm font-medium mb-1">
                 Składniki:
               </label>
               
               {/* Lista obecnych składników */}
               {currentRecipe.ingredients.length > 0 && (
-                <ul className="mb-4 divide-y dark:divide-gray-600">
+                <ul className={`mb-4 divide-y ${darkMode ? 'divide-gray-600' : 'divide-gray-200'}`}>
                   {currentRecipe.ingredients.map((ing, idx) => (
                     <li key={idx} className="py-2 flex justify-between items-center">
-                      <span className="text-gray-800 dark:text-gray-200">
+                      <span>
                         {ing.name} ({ing.quantity} {ing.unit}) - {ing.category}
                       </span>
                       <button 
                         onClick={() => removeIngredient(idx)}
-                        className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                        className="text-red-600 hover:text-red-800"
                       >
                         Usuń
                       </button>
@@ -393,12 +517,12 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
                   placeholder="Nazwa składnika"
                   value={newIngredient.name}
                   onChange={(e) => handleIngredientChange('name', e.target.value)}
-                  className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className={`p-2 border rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                 />
                 <select
                   value={newIngredient.category}
                   onChange={(e) => handleIngredientChange('category', e.target.value)}
-                  className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className={`p-2 border rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                 >
                   {categories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -410,13 +534,13 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
                   type="number"
                   placeholder="Ilość"
                   value={newIngredient.quantity}
-                  onChange={(e) => handleIngredientChange('quantity', parseFloat(e.target.value) || '')}
-                  className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  onChange={(e) => handleIngredientChange('quantity', e.target.value)}
+                  className={`p-2 border rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                 />
                 <select
                   value={newIngredient.unit}
                   onChange={(e) => handleIngredientChange('unit', e.target.value)}
-                  className="p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className={`p-2 border rounded ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                 >
                   {units.map(unit => (
                     <option key={unit} value={unit}>{unit}</option>
@@ -434,16 +558,17 @@ const MealPlanner = ({ addItemsToShoppingList }) => {
             {/* Przyciski akcji */}
             <div className="flex justify-end gap-2">
               <button 
-                onClick={() => setShowRecipeModal(false)}
-                className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+                onClick={() => setShowCustomRecipeModal(false)}
+                className={`px-4 py-2 border rounded-md ${darkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'}`}
               >
                 Anuluj
               </button>
               <button 
                 onClick={saveRecipe}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                disabled={currentRecipe.name.trim() === '' || currentRecipe.ingredients.length === 0}
               >
-                Zapisz Przepis
+                Zapisz Posiłek
               </button>
             </div>
           </div>
