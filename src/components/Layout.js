@@ -16,7 +16,9 @@ function Layout({
   storesToVisitCount,
   showBudget,
   budgetAmount,
-  remainingBudget
+  remainingBudget,
+  fridgeItemsCount,
+  recipesCount
 }) {
   // Formatowanie kwoty do wyświetlenia
   const formatCurrency = (amount) => {
@@ -68,6 +70,34 @@ function Layout({
                 <span className="mr-3">🛒</span>
                 <span className="flex-grow">Lista Zakupów</span>
                 <span className={`px-2 py-1 rounded-full text-xs ${darkMode ? 'bg-blue-600' : 'bg-blue-200'}`}>{itemsCount}</span>
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => setActiveView('fridge')}
+                className={`w-full text-left flex items-center p-3 rounded-lg transition-colors ${
+                  activeView === 'fridge' 
+                    ? (darkMode ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800') 
+                    : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200')
+                }`}
+              >
+                <span className="mr-3">🧊</span>
+                <span className="flex-grow">Lodówka</span>
+                <span className={`px-2 py-1 rounded-full text-xs ${darkMode ? 'bg-blue-600' : 'bg-blue-200'}`}>{fridgeItemsCount || 0}</span>
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => setActiveView('recipes')}
+                className={`w-full text-left flex items-center p-3 rounded-lg transition-colors ${
+                  activeView === 'recipes' 
+                    ? (darkMode ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800') 
+                    : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200')
+                }`}
+              >
+                <span className="mr-3">📖</span>
+                <span className="flex-grow">Przepisy</span>
+                <span className={`px-2 py-1 rounded-full text-xs ${darkMode ? 'bg-blue-600' : 'bg-blue-200'}`}>{recipesCount || 0}</span>
               </button>
             </li>
             <li>
@@ -124,7 +154,6 @@ function Layout({
               >
                 <span className="mr-3">🍽️</span>
                 <span className="flex-grow">Planer Menu</span>
-                <span className={`px-2 py-1 rounded-full text-xs ${darkMode ? 'bg-purple-600' : 'bg-purple-200'}`}>Nowe</span>
               </button>
             </li>
             <li>
@@ -196,6 +225,8 @@ function Layout({
           
           <h1 className="text-lg font-bold ml-2">
             {activeView === 'shopping-list' && 'Lista Zakupów'}
+            {activeView === 'fridge' && 'Zawartość Lodówki'}
+            {activeView === 'recipes' && 'Przepisy'}
             {activeView === 'stores' && 'Sklepy'}
             {activeView === 'budget' && 'Budżet'}
             {activeView === 'menu-planner' && 'Planer Menu'}
