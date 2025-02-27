@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import ShoppingListView from './components/ShoppingListView';
 import TemplatesView from './components/TemplatesView';
@@ -10,9 +9,6 @@ import BudgetView from './components/BudgetView';
 import GroupedShoppingList from './components/GroupedShoppingList';
 import MenuPlannerView from './components/MenuPlannerView';
 import FridgeView from './components/FridgeView';
-import RecipesView from './components/RecipesView';
-import RecipeDetail from './components/RecipeDetail';
-import RecipeEditor from './components/RecipeEditor';
 
 // Domyślne kategorie jako stała (do wykorzystania przy resetowaniu)
 const DEFAULT_CATEGORIES = [
@@ -25,11 +21,7 @@ const DEFAULT_CATEGORIES = [
   'Inne'
 ];
 
-// Komponent pomocniczy do obsługi wewnętrznych widoków
-const AppContent = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  
+function App() {
   // Główne stany aplikacji
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
@@ -57,29 +49,6 @@ const AppContent = () => {
   const [newTemplateName, setNewTemplateName] = useState('');
   const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
   
-  // Efekt dla synchronizacji activeView z aktualną ścieżką URL
-  useEffect(() => {
-    if (location.pathname === '/') {
-      setActiveView('shopping-list');
-    } else if (location.pathname.startsWith('/fridge')) {
-      setActiveView('fridge');
-    } else if (location.pathname.startsWith('/recipes')) {
-      setActiveView('recipes');
-    } else if (location.pathname.startsWith('/templates')) {
-      setActiveView('templates');
-    } else if (location.pathname.startsWith('/categories')) {
-      setActiveView('categories');
-    } else if (location.pathname.startsWith('/stores')) {
-      setActiveView('stores');
-    } else if (location.pathname.startsWith('/budget')) {
-      setActiveView('budget');
-    } else if (location.pathname.startsWith('/menu-planner')) {
-      setActiveView('menu-planner');
-    } else if (location.pathname.startsWith('/settings')) {
-      setActiveView('settings');
-    }
-  }, [location]);
-  
   // Ustaw domyślną kategorię, gdy kategorie zostaną załadowane
   useEffect(() => {
     if (categories.length > 0 && !newItemCategory) {
@@ -89,147 +58,148 @@ const AppContent = () => {
 
   // Ładowanie danych z localStorage
   useEffect(() => {
-    try {
-      const savedItems = localStorage.getItem('shoppingList');
-      const savedDarkMode = localStorage.getItem('darkMode');
-      const savedTemplates = localStorage.getItem('shoppingTemplates');
-      const savedCategories = localStorage.getItem('shoppingCategories');
-      const savedStores = localStorage.getItem('shoppingStores');
-      const savedStoresToVisit = localStorage.getItem('shoppingStoresToVisit');
-      const savedBudget = localStorage.getItem('shoppingBudget');
-      const savedCategoryBudgets = localStorage.getItem('shoppingCategoryBudgets');
-      const savedListViewMode = localStorage.getItem('shoppingListViewMode');
-      const savedFridgeItems = localStorage.getItem('shoppingFridgeItems');
-      const savedRecipes = localStorage.getItem('shoppingRecipes');
-      
-      if (savedItems) {
+    const savedItems = localStorage.getItem('shoppingList');
+    const savedDarkMode = localStorage.getItem('darkMode');
+    const savedTemplates = localStorage.getItem('shoppingTemplates');
+    const savedCategories = localStorage.getItem('shoppingCategories');
+    const savedStores = localStorage.getItem('shoppingStores');
+    const savedStoresToVisit = localStorage.getItem('shoppingStoresToVisit');
+    const savedBudget = localStorage.getItem('shoppingBudget');
+    const savedCategoryBudgets = localStorage.getItem('shoppingCategoryBudgets');
+    const savedListViewMode = localStorage.getItem('shoppingListViewMode');
+    const savedFridgeItems = localStorage.getItem('shoppingFridgeItems');
+    const savedRecipes = localStorage.getItem('shoppingRecipes');
+    
+    if (savedItems) {
+      try {
         setItems(JSON.parse(savedItems));
+      } catch (e) {
+        console.error("Error parsing saved items:", e);
       }
-      
-      if (savedDarkMode) {
+    }
+    
+    if (savedDarkMode) {
+      try {
         setDarkMode(JSON.parse(savedDarkMode));
+      } catch (e) {
+        console.error("Error parsing dark mode setting:", e);
       }
+    }
 
-      if (savedTemplates) {
+    if (savedTemplates) {
+      try {
         setTemplates(JSON.parse(savedTemplates));
+      } catch (e) {
+        console.error("Error parsing saved templates:", e);
       }
+    }
 
-      if (savedCategories) {
+    if (savedCategories) {
+      try {
         setCategories(JSON.parse(savedCategories));
+      } catch (e) {
+        console.error("Error parsing saved categories:", e);
+        setCategories(DEFAULT_CATEGORIES);
       }
+    }
 
-      if (savedStores) {
+    if (savedStores) {
+      try {
         setStores(JSON.parse(savedStores));
+      } catch (e) {
+        console.error("Error parsing saved stores:", e);
       }
+    }
 
-      if (savedStoresToVisit) {
+    if (savedStoresToVisit) {
+      try {
         setStoresToVisit(JSON.parse(savedStoresToVisit));
+      } catch (e) {
+        console.error("Error parsing stores to visit:", e);
       }
+    }
 
-      if (savedBudget) {
+    if (savedBudget) {
+      try {
         setBudget(JSON.parse(savedBudget));
+      } catch (e) {
+        console.error("Error parsing budget:", e);
       }
+    }
 
-      if (savedCategoryBudgets) {
+    if (savedCategoryBudgets) {
+      try {
         setCategoryBudgets(JSON.parse(savedCategoryBudgets));
+      } catch (e) {
+        console.error("Error parsing category budgets:", e);
       }
-      
-      if (savedListViewMode) {
+    }
+    
+    if (savedListViewMode) {
+      try {
         setListViewMode(JSON.parse(savedListViewMode));
+      } catch (e) {
+        console.error("Error parsing list view mode:", e);
       }
-      
-      if (savedFridgeItems) {
+    }
+    
+    if (savedFridgeItems) {
+      try {
         setFridgeItems(JSON.parse(savedFridgeItems));
+      } catch (e) {
+        console.error("Error parsing fridge items:", e);
       }
-      
-      if (savedRecipes) {
+    }
+    
+    if (savedRecipes) {
+      try {
         setRecipes(JSON.parse(savedRecipes));
+      } catch (e) {
+        console.error("Error parsing recipes:", e);
       }
-    } catch (error) {
-      console.error('Błąd podczas ładowania danych z localStorage:', error);
-      // Można tu dodać bardziej rozwiniętą obsługę błędów, np. wyświetlanie komunikatu
     }
   }, []);
 
-  // Zapis danych do localStorage z debounce
-  const saveToLocalStorage = (key, data) => {
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch (error) {
-      console.error(`Błąd podczas zapisywania ${key} do localStorage:`, error);
-    }
-  };
-  
+  // Zapis danych do localStorage
   useEffect(() => {
-    const timer = setTimeout(() => {
-      saveToLocalStorage('shoppingList', items);
-      saveToLocalStorage('darkMode', darkMode);
-    }, 500); // 500ms debounce
-    
-    return () => clearTimeout(timer);
+    localStorage.setItem('shoppingList', JSON.stringify(items));
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
   }, [items, darkMode]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      saveToLocalStorage('shoppingTemplates', templates);
-    }, 500);
-    return () => clearTimeout(timer);
+    localStorage.setItem('shoppingTemplates', JSON.stringify(templates));
   }, [templates]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      saveToLocalStorage('shoppingCategories', categories);
-    }, 500);
-    return () => clearTimeout(timer);
+    localStorage.setItem('shoppingCategories', JSON.stringify(categories));
   }, [categories]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      saveToLocalStorage('shoppingStores', stores);
-    }, 500);
-    return () => clearTimeout(timer);
+    localStorage.setItem('shoppingStores', JSON.stringify(stores));
   }, [stores]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      saveToLocalStorage('shoppingStoresToVisit', storesToVisit);
-    }, 500);
-    return () => clearTimeout(timer);
+    localStorage.setItem('shoppingStoresToVisit', JSON.stringify(storesToVisit));
   }, [storesToVisit]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      saveToLocalStorage('shoppingBudget', budget);
-    }, 500);
-    return () => clearTimeout(timer);
+    localStorage.setItem('shoppingBudget', JSON.stringify(budget));
   }, [budget]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      saveToLocalStorage('shoppingCategoryBudgets', categoryBudgets);
-    }, 500);
-    return () => clearTimeout(timer);
+    localStorage.setItem('shoppingCategoryBudgets', JSON.stringify(categoryBudgets));
   }, [categoryBudgets]);
   
   useEffect(() => {
-    const timer = setTimeout(() => {
-      saveToLocalStorage('shoppingListViewMode', listViewMode);
-    }, 500);
-    return () => clearTimeout(timer);
+    localStorage.setItem('shoppingListViewMode', JSON.stringify(listViewMode));
   }, [listViewMode]);
   
   useEffect(() => {
-    const timer = setTimeout(() => {
-      saveToLocalStorage('shoppingFridgeItems', fridgeItems);
-    }, 500);
-    return () => clearTimeout(timer);
+    localStorage.setItem('shoppingFridgeItems', JSON.stringify(fridgeItems));
   }, [fridgeItems]);
   
   useEffect(() => {
-    const timer = setTimeout(() => {
-      saveToLocalStorage('shoppingRecipes', recipes);
-    }, 500);
-    return () => clearTimeout(timer);
+    localStorage.setItem('shoppingRecipes', JSON.stringify(recipes));
   }, [recipes]);
 
   // Funkcje UI
@@ -243,44 +213,6 @@ const AppContent = () => {
   
   const toggleListViewMode = () => {
     setListViewMode(listViewMode === 'standard' ? 'grouped' : 'standard');
-  };
-  
-  // Obsługa zmiany aktywnego widoku
-  const handleSetActiveView = (view) => {
-    setActiveView(view);
-    
-    // Aktualizuj URL na podstawie wybranego widoku
-    switch(view) {
-      case 'shopping-list':
-        navigate('/');
-        break;
-      case 'fridge':
-        navigate('/fridge');
-        break;
-      case 'recipes':
-        navigate('/recipes');
-        break;
-      case 'templates':
-        navigate('/templates');
-        break;
-      case 'categories':
-        navigate('/categories');
-        break;
-      case 'stores':
-        navigate('/stores');
-        break;
-      case 'budget':
-        navigate('/budget');
-        break;
-      case 'menu-planner':
-        navigate('/menu-planner');
-        break;
-      case 'settings':
-        navigate('/settings');
-        break;
-      default:
-        navigate('/');
-    }
   };
   
   // Funkcja do dodawania wielu przedmiotów na raz (np. z planera menu)
@@ -297,8 +229,6 @@ const AppContent = () => {
     
     if (uniqueNewItems.length > 0) {
       setItems([...items, ...uniqueNewItems]);
-      // Przejdź do widoku listy zakupów po dodaniu przedmiotów
-      handleSetActiveView('shopping-list');
     }
   };
   
@@ -408,7 +338,7 @@ const AppContent = () => {
       // Aktualizujemy kategorie składników przepisu
       if (updatedRecipe.ingredients && Array.isArray(updatedRecipe.ingredients)) {
         updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => 
-          ingredient && ingredient.category === oldName ? 
+          ingredient.category === oldName ? 
             { ...ingredient, category: newName.trim() } : ingredient
         );
       }
@@ -469,7 +399,7 @@ const AppContent = () => {
       // Aktualizujemy kategorie składników przepisu
       if (updatedRecipe.ingredients && Array.isArray(updatedRecipe.ingredients)) {
         updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => 
-          ingredient && ingredient.category === categoryName ? 
+          ingredient.category === categoryName ? 
             { ...ingredient, category: fallbackCategory } : ingredient
         );
       }
@@ -529,12 +459,10 @@ const AppContent = () => {
       
       // Aktualizujemy kategorie składników przepisu
       if (updatedRecipe.ingredients && Array.isArray(updatedRecipe.ingredients)) {
-        updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => 
-          ingredient ? {
-            ...ingredient,
-            category: categoryMap[ingredient.category] || DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
-          } : ingredient
-        );
+        updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => ({
+          ...ingredient,
+          category: categoryMap[ingredient.category] || DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
+        }));
       }
       
       return updatedRecipe;
@@ -642,12 +570,7 @@ const AppContent = () => {
   const calculateTotalCost = () => {
     return items.reduce((total, item) => {
       if (!item.completed && item.price) {
-        const itemPrice = parseFloat(item.price) || 0;
-        const itemQuantity = parseFloat(item.quantity) || 1;
-        // Sprawdź czy wyniki są poprawne (nie NaN)
-        if (!isNaN(itemPrice) && !isNaN(itemQuantity)) {
-          return total + (itemPrice * itemQuantity);
-        }
+        return total + (item.price * (item.quantity || 1));
       }
       return total;
     }, 0);
@@ -675,8 +598,6 @@ const AppContent = () => {
       };
       setRecipes([...recipes, newRecipe]);
     }
-    // Po zapisaniu przepisu przekieruj do widoku przepisów
-    navigate('/recipes');
   };
   
   // Usuwanie przepisu
@@ -769,14 +690,109 @@ const AppContent = () => {
     );
   };
 
-  // Renderowanie odpowiedniego widoku na podstawie ścieżki
+  // Renderowanie odpowiedniego widoku
+  const renderActiveView = () => {
+    switch(activeView) {
+      case 'shopping-list':
+        return renderShoppingList();
+        
+      case 'fridge':
+        return (
+          <FridgeView
+            fridgeItems={fridgeItems}
+            setFridgeItems={setFridgeItems}
+            categories={categories}
+            darkMode={darkMode}
+          />
+        );
+        
+      case 'recipes':
+        // Wyłączamy tymczasowo widok przepisów ze względu na brak biblioteki React Router
+        return (
+          <div className="p-4">
+            <h2 className="text-xl font-bold mb-4">Przepisy</h2>
+            <p>Ta funkcjonalność jest obecnie niedostępna.</p>
+          </div>
+        );
+        
+      case 'templates':
+        return (
+          <TemplatesView
+            templates={templates}
+            loadTemplate={loadTemplate}
+            deleteTemplate={deleteTemplate}
+            darkMode={darkMode}
+          />
+        );
+        
+      case 'categories':
+        return (
+          <CategoriesView
+            categories={categories}
+            addCategory={addCategory}
+            editCategory={editCategory}
+            deleteCategory={deleteCategory}
+            resetCategories={resetCategories}
+            darkMode={darkMode}
+          />
+        );
+        
+      case 'stores':
+        return (
+          <StoresView
+            stores={stores}
+            addStore={addStore}
+            editStore={editStore}
+            deleteStore={deleteStore}
+            setStoreToVisit={setStoreToVisit}
+            calculateOptimalRoute={calculateOptimalRoute}
+            darkMode={darkMode}
+          />
+        );
+        
+      case 'budget':
+        return (
+          <BudgetView
+            budget={budget}
+            updateBudget={updateBudget}
+            categoryBudgets={categoryBudgets}
+            updateCategoryBudget={updateCategoryBudget}
+            items={items}
+            categories={categories}
+            darkMode={darkMode}
+          />
+        );
+        
+      case 'menu-planner':
+        return (
+          <MenuPlannerView
+            addItemsToShoppingList={addItemsToShoppingList}
+            recipes={recipes}
+            fridgeItems={fridgeItems}
+            darkMode={darkMode}
+          />
+        );
+        
+      case 'settings':
+        return (
+          <SettingsView
+            darkMode={darkMode}
+            toggleDarkMode={toggleDarkMode}
+          />
+        );
+        
+      default:
+        return null;
+    }
+  };
+
   return (
     <Layout
       darkMode={darkMode}
       sidebarOpen={sidebarOpen}
       toggleSidebar={toggleSidebar}
       activeView={activeView}
-      setActiveView={handleSetActiveView}
+      setActiveView={setActiveView}
       toggleDarkMode={toggleDarkMode}
       itemsCount={items.length}
       templatesCount={templates.length}
@@ -789,114 +805,8 @@ const AppContent = () => {
       budgetAmount={budget?.total || 0}
       remainingBudget={remainingBudget}
     >
-      <Routes>
-        <Route path="/" element={renderShoppingList()} />
-        <Route path="/fridge" element={
-          <FridgeView
-            fridgeItems={fridgeItems}
-            setFridgeItems={setFridgeItems}
-            categories={categories}
-            darkMode={darkMode}
-          />
-        } />
-        <Route path="/recipes" element={
-          <RecipesView
-            recipes={recipes}
-            deleteRecipe={deleteRecipe}
-            categories={categories}
-            darkMode={darkMode}
-          />
-        } />
-        <Route path="/recipes/recipe/:id" element={
-          <RecipeDetail
-            recipes={recipes}
-            addItemsToShoppingList={addItemsToShoppingList}
-            fridgeItems={fridgeItems}
-            darkMode={darkMode}
-          />
-        } />
-        <Route path="/recipes/recipe/edit/:id" element={
-          <RecipeEditor
-            recipes={recipes}
-            saveRecipe={saveRecipe}
-            categories={categories}
-            darkMode={darkMode}
-          />
-        } />
-        <Route path="/recipes/recipe/new" element={
-          <RecipeEditor
-            recipes={recipes}
-            saveRecipe={saveRecipe}
-            categories={categories}
-            darkMode={darkMode}
-          />
-        } />
-        <Route path="/templates" element={
-          <TemplatesView
-            templates={templates}
-            loadTemplate={loadTemplate}
-            deleteTemplate={deleteTemplate}
-            darkMode={darkMode}
-          />
-        } />
-        <Route path="/categories" element={
-          <CategoriesView
-            categories={categories}
-            addCategory={addCategory}
-            editCategory={editCategory}
-            deleteCategory={deleteCategory}
-            resetCategories={resetCategories}
-            darkMode={darkMode}
-          />
-        } />
-        <Route path="/stores" element={
-          <StoresView
-            stores={stores}
-            addStore={addStore}
-            editStore={editStore}
-            deleteStore={deleteStore}
-            setStoreToVisit={setStoreToVisit}
-            calculateOptimalRoute={calculateOptimalRoute}
-            darkMode={darkMode}
-          />
-        } />
-        <Route path="/budget" element={
-          <BudgetView
-            budget={budget}
-            updateBudget={updateBudget}
-            categoryBudgets={categoryBudgets}
-            updateCategoryBudget={updateCategoryBudget}
-            items={items}
-            categories={categories}
-            darkMode={darkMode}
-          />
-        } />
-        <Route path="/menu-planner" element={
-          <MenuPlannerView
-            addItemsToShoppingList={addItemsToShoppingList}
-            recipes={recipes}
-            fridgeItems={fridgeItems}
-            darkMode={darkMode}
-          />
-        } />
-        <Route path="/settings" element={
-          <SettingsView
-            darkMode={darkMode}
-            toggleDarkMode={toggleDarkMode}
-          />
-        } />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+      {renderActiveView()}
     </Layout>
-  );
-};
-
-// Główny komponent aplikacji
-function App() {
-  return (
-    <Routes>
-      <Route path="/*" element={<AppContent />} />
-    </Routes>
   );
 }
 
