@@ -1,7 +1,33 @@
 import React from 'react';
 
 // Komponent głównego układu aplikacji
-function Layout({ children, darkMode, sidebarOpen, toggleSidebar, activeView, setActiveView, toggleDarkMode, itemsCount, templatesCount, categoriesCount, storesCount, storesToVisitCount }) {
+function Layout({ 
+  children, 
+  darkMode, 
+  sidebarOpen, 
+  toggleSidebar, 
+  activeView, 
+  setActiveView, 
+  toggleDarkMode, 
+  itemsCount, 
+  templatesCount, 
+  categoriesCount, 
+  storesCount, 
+  storesToVisitCount,
+  showBudget,
+  budgetAmount,
+  remainingBudget
+}) {
+  // Formatowanie kwoty do wyświetlenia
+  const formatCurrency = (amount) => {
+    return amount.toLocaleString('pl-PL', { 
+      style: 'currency', 
+      currency: 'PLN',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+  
   return (
     <div className={`${darkMode ? 'dark bg-gray-900 text-white' : 'bg-white text-black'} min-h-screen transition-colors duration-300 flex`}>
       {/* Overlay tła przy otwartym sidebar na mobilnych urządzeniach */}
@@ -63,6 +89,28 @@ function Layout({ children, darkMode, sidebarOpen, toggleSidebar, activeView, se
                     </span>
                   )}
                 </div>
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => setActiveView('budget')}
+                className={`w-full text-left flex items-center p-3 rounded-lg transition-colors ${
+                  activeView === 'budget' 
+                    ? (darkMode ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800') 
+                    : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200')
+                }`}
+              >
+                <span className="mr-3">💰</span>
+                <span className="flex-grow">Budżet</span>
+                {showBudget && (
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    remainingBudget < 0 
+                      ? (darkMode ? 'bg-red-600' : 'bg-red-200') 
+                      : (darkMode ? 'bg-green-600' : 'bg-green-200')
+                  }`} title="Pozostało">
+                    {formatCurrency(remainingBudget)}
+                  </span>
+                )}
               </button>
             </li>
             <li>
@@ -135,6 +183,7 @@ function Layout({ children, darkMode, sidebarOpen, toggleSidebar, activeView, se
           <h1 className="text-lg font-bold ml-2">
             {activeView === 'shopping-list' && 'Lista Zakupów'}
             {activeView === 'stores' && 'Sklepy'}
+            {activeView === 'budget' && 'Budżet'}
             {activeView === 'templates' && 'Szablony'}
             {activeView === 'categories' && 'Kategorie'}
             {activeView === 'settings' && 'Ustawienia'}
