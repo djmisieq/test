@@ -21,11 +21,15 @@ function App() {
   const [editItemName, setEditItemName] = useState('');
   const [filterCategory, setFilterCategory] = useState('Wszystkie');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
 
-  // Ładowanie listy zakupów z localStorage
+  // Ładowanie listy zakupów, szablonów i trybu ciemnego z localStorage
   useEffect(() => {
     const savedItems = localStorage.getItem('shoppingList');
     const savedDarkMode = localStorage.getItem('darkMode');
+    const savedTemplates = localStorage.getItem('shoppingTemplates');
     
     if (savedItems) {
       setItems(JSON.parse(savedItems));
@@ -34,13 +38,22 @@ function App() {
     if (savedDarkMode) {
       setDarkMode(JSON.parse(savedDarkMode));
     }
+
+    if (savedTemplates) {
+      setTemplates(JSON.parse(savedTemplates));
+    }
   }, []);
 
-  // Zapis listy zakupów i trybu ciemnego do localStorage
+  // Zapis listy zakupów, szablonów i trybu ciemnego do localStorage
   useEffect(() => {
     localStorage.setItem('shoppingList', JSON.stringify(items));
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
   }, [items, darkMode]);
+
+  // Zapis szablonów do localStorage
+  useEffect(() => {
+    localStorage.setItem('shoppingTemplates', JSON.stringify(templates));
+  }, [templates]);
 
   const addItem = () => {
     if (newItem.trim() !== '') {
@@ -97,6 +110,62 @@ function App() {
 
   const closeSettings = () => {
     setSettingsOpen(false);
+  };
+
+  const openSaveTemplateModal = () => {
+    setNewTemplateName('');
+    setSaveTemplateModalOpen(true);
+  };
+
+  const closeSaveTemplateModal = () => {
+    setSaveTemplateModalOpen(false);
+  };
+
+  const saveAsTemplate = () => {
+    if (newTemplateName.trim() === '') return;
+    
+    // Filtrujemy tylko niezakończone elementy do szablonu i usuwamy pole completed
+    const templateItems = items
+      .filter(item => !item.completed)
+      .map(({ id, name, category }) => ({
+        id: Date.now() + Math.random(), // Generujemy nowe ID dla szablonu
+        name,
+        category
+      }));
+    
+    const newTemplate = {
+      id: Date.now(),
+      name: newTemplateName.trim(),
+      items: templateItems
+    };
+    
+    setTemplates([...templates, newTemplate]);
+    closeSaveTemplateModal();
+  };
+
+  const loadTemplate = (templateId) => {
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+    
+    // Dodaj elementy z szablonu do bieżącej listy,
+    // ale tylko te, których jeszcze nie ma na liście
+    const existingNames = new Set(items.map(item => item.name.toLowerCase()));
+    
+    const newItems = template.items
+      .filter(item => !existingNames.has(item.name.toLowerCase()))
+      .map(item => ({
+        ...item,
+        id: Date.now() + Math.random(), // Generujemy nowe unikalne ID
+        completed: false
+      }));
+    
+    if (newItems.length > 0) {
+      setItems([...items, ...newItems]);
+    }
+  };
+
+  const deleteTemplate = (templateId) => {
+    setTemplates(templates.filter(template => template.id !== templateId));
   };
 
   // Filtrowanie produktów
@@ -157,6 +226,35 @@ function App() {
               <option key={category} value={category}>{category}</option>
             ))}
           </select>
+        </div>
+
+        {/* Przyciski szablonów */}
+        <div className="flex justify-between mb-4">
+          <button
+            onClick={openSaveTemplateModal}
+            className={`px-3 py-1 rounded-lg ${darkMode ? 'bg-purple-700 hover:bg-purple-600' : 'bg-purple-500 hover:bg-purple-600'} text-white transition-colors text-sm`}
+          >
+            Zapisz jako szablon
+          </button>
+          
+          {templates.length > 0 && (
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  loadTemplate(parseInt(e.target.value));
+                  e.target.value = ''; // Reset po wyborze
+                }
+              }}
+              className={`ml-2 px-3 py-1 rounded-lg ${darkMode ? 'bg-teal-700 text-white border-gray-700' : 'bg-teal-500 text-white'} transition-colors text-sm`}
+            >
+              <option value="">Wczytaj szablon</option>
+              {templates.map(template => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Filtrowanie kategorii */}
@@ -256,7 +354,42 @@ function App() {
         onClose={closeSettings} 
         darkMode={darkMode} 
         toggleDarkMode={toggleDarkMode}
+        templates={templates}
+        loadTemplate={loadTemplate}
+        deleteTemplate={deleteTemplate}
       />
+
+      {/* Modal do zapisywania szablonu */}
+      {saveTemplateModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20">
+          <div className={`${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-black'} p-6 rounded-lg shadow-lg max-w-md w-full`}>
+            <h2 className="text-xl font-bold mb-4">Zapisz jako szablon</h2>
+            <input
+              type="text"
+              value={newTemplateName}
+              onChange={(e) => setNewTemplateName(e.target.value)}
+              placeholder="Nazwa szablonu"
+              className={`w-full p-2 border rounded mb-4 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}`}
+              onKeyPress={(e) => e.key === 'Enter' && saveAsTemplate()}
+              autoFocus
+            />
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={closeSaveTemplateModal}
+                className={`px-4 py-2 rounded ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={saveAsTemplate}
+                className={`px-4 py-2 rounded ${darkMode ? 'bg-green-700 hover:bg-green-600' : 'bg-green-500 hover:bg-green-600'} text-white`}
+              >
+                Zapisz
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
