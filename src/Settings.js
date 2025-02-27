@@ -1,8 +1,24 @@
 import React, { useState } from 'react';
 
-function Settings({ isOpen, onClose, darkMode, toggleDarkMode, templates, loadTemplate, deleteTemplate }) {
+function Settings({ 
+  isOpen, 
+  onClose, 
+  darkMode, 
+  toggleDarkMode, 
+  templates, 
+  loadTemplate, 
+  deleteTemplate,
+  categories,
+  addCategory,
+  editCategory,
+  deleteCategory,
+  resetCategories
+}) {
   const [activeTab, setActiveTab] = useState('general');
   const [expandedTemplate, setExpandedTemplate] = useState(null);
+  const [newCategory, setNewCategory] = useState('');
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editedCategoryName, setEditedCategoryName] = useState('');
 
   if (!isOpen) return null;
 
@@ -16,6 +32,51 @@ function Settings({ isOpen, onClose, darkMode, toggleDarkMode, templates, loadTe
       setExpandedTemplate(null);
     } else {
       setExpandedTemplate(templateId);
+    }
+  };
+
+  const handleAddCategory = () => {
+    if (newCategory.trim() === '') return;
+    
+    addCategory(newCategory);
+    setNewCategory('');
+  };
+
+  const startEditCategory = (category) => {
+    setEditingCategory(category);
+    setEditedCategoryName(category);
+  };
+
+  const handleEditCategory = () => {
+    if (editedCategoryName.trim() === '' || editedCategoryName === editingCategory) {
+      cancelEditCategory();
+      return;
+    }
+    
+    editCategory(editingCategory, editedCategoryName);
+    cancelEditCategory();
+  };
+
+  const cancelEditCategory = () => {
+    setEditingCategory(null);
+    setEditedCategoryName('');
+  };
+
+  const handleDeleteCategory = (category) => {
+    // Potwierdź przed usunięciem
+    if (categories.length <= 1) {
+      alert('Nie można usunąć ostatniej kategorii.');
+      return;
+    }
+    
+    if (window.confirm(`Czy na pewno chcesz usunąć kategorię "${category}"?\nWszystkie produkty z tej kategorii zostaną przeniesione do innej kategorii.`)) {
+      deleteCategory(category);
+    }
+  };
+
+  const handleResetCategories = () => {
+    if (window.confirm('Czy na pewno chcesz przywrócić domyślne kategorie? Wszystkie produkty zostaną przypisane do odpowiednich kategorii.')) {
+      resetCategories();
     }
   };
 
@@ -33,7 +94,7 @@ function Settings({ isOpen, onClose, darkMode, toggleDarkMode, templates, loadTe
         </div>
         
         {/* Zakładki */}
-        <div className="flex border-b mb-4">
+        <div className="flex border-b mb-4 overflow-x-auto">
           <button 
             onClick={() => setActiveTab('general')}
             className={`py-2 px-4 ${activeTab === 'general' 
@@ -43,6 +104,16 @@ function Settings({ isOpen, onClose, darkMode, toggleDarkMode, templates, loadTe
               : ''}`}
           >
             Ogólne
+          </button>
+          <button 
+            onClick={() => setActiveTab('categories')}
+            className={`py-2 px-4 ${activeTab === 'categories' 
+              ? darkMode 
+                ? 'border-b-2 border-blue-500 text-blue-400' 
+                : 'border-b-2 border-blue-500 text-blue-600' 
+              : ''}`}
+          >
+            Kategorie
           </button>
           <button 
             onClick={() => setActiveTab('templates')}
@@ -69,6 +140,107 @@ function Settings({ isOpen, onClose, darkMode, toggleDarkMode, templates, loadTe
                   {darkMode ? '☀️' : '🌙'}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Zawartość zakładki Kategorie */}
+        {activeTab === 'categories' && (
+          <div>
+            <div className="mb-4 border-b pb-4">
+              <h3 className="font-medium mb-2">Dodaj nową kategorię</h3>
+              <div className="flex">
+                <input
+                  type="text"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="Nazwa kategorii"
+                  className={`flex-grow p-2 border rounded-l-lg ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}`}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddCategory()}
+                />
+                <button
+                  onClick={handleAddCategory}
+                  className={`px-3 py-1 rounded-r-lg ${darkMode ? 'bg-green-700 hover:bg-green-600' : 'bg-green-500 hover:bg-green-600'} text-white`}
+                >
+                  Dodaj
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-medium">Twoje kategorie</h3>
+                <button
+                  onClick={handleResetCategories}
+                  className={`px-3 py-1 text-sm rounded ${darkMode ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-yellow-500 hover:bg-yellow-400'} text-white`}
+                >
+                  Resetuj do domyślnych
+                </button>
+              </div>
+              
+              <ul className="space-y-2 mt-2">
+                {categories.map(category => (
+                  <li 
+                    key={category} 
+                    className={`border rounded p-2 ${darkMode ? 'border-gray-700' : 'border-gray-300'}`}
+                  >
+                    {editingCategory === category ? (
+                      <div className="flex">
+                        <input
+                          type="text"
+                          value={editedCategoryName}
+                          onChange={(e) => setEditedCategoryName(e.target.value)}
+                          className={`flex-grow p-1 border rounded-l ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white'}`}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') handleEditCategory();
+                            if (e.key === 'Escape') cancelEditCategory();
+                          }}
+                          autoFocus
+                        />
+                        <div className="flex">
+                          <button
+                            onClick={handleEditCategory}
+                            className={`p-1 ${darkMode ? 'bg-green-700 text-white' : 'bg-green-500 text-white'} rounded-none`}
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={cancelEditCategory}
+                            className={`p-1 ${darkMode ? 'bg-red-700 text-white' : 'bg-red-500 text-white'} rounded-r`}
+                          >
+                            ✖
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center">
+                        <span>{category}</span>
+                        <div className="flex space-x-1">
+                          <button
+                            onClick={() => startEditCategory(category)}
+                            className={`p-1 ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                          >
+                            ✎
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(category)}
+                            className={`p-1 ${darkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'}`}
+                            disabled={categories.length <= 1}
+                          >
+                            ✖
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              
+              {categories.length <= 1 && (
+                <p className="text-sm mt-2 italic opacity-70">
+                  Musi istnieć co najmniej jedna kategoria.
+                </p>
+              )}
             </div>
           </div>
         )}
