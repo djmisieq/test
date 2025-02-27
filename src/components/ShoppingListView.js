@@ -21,7 +21,9 @@ function ShoppingListView({
   totalBudget,
   remainingBudget,
   showBudgetSummary,
-  darkMode
+  darkMode,
+  toggleListViewMode,
+  listViewMode
 }) {
   // Stan do śledzenia zwijania/rozwijania kategorii
   const [collapsedCategories, setCollapsedCategories] = useState({});
@@ -148,7 +150,15 @@ function ShoppingListView({
     <div className={`${darkMode ? 'dark:bg-gray-900' : 'bg-white'} rounded-lg shadow-md`}>
       <div className="p-4 md:p-6">
         <div className="mb-6">
-          <h2 className="text-xl font-bold mb-4">Dodaj produkt</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Dodaj produkt</h2>
+            <button 
+              onClick={toggleListViewMode}
+              className={`px-3 py-1 ${darkMode ? 'bg-indigo-700 hover:bg-indigo-600' : 'bg-indigo-500 hover:bg-indigo-600'} text-white rounded-lg`}
+            >
+              {listViewMode === 'standard' ? 'Widok wg Sklepów' : 'Widok Standardowy'}
+            </button>
+          </div>
           <div className="flex flex-col md:flex-row mb-2 gap-2">
             <div className="flex flex-1">
               <input 
