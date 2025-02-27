@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import StoreSelector from './StoreSelector';
+import PriceEditor from './PriceEditor';
 
 // Komponent dedykowany dla widoku listy zakupów
 function ShoppingListView({ 
@@ -16,6 +17,10 @@ function ShoppingListView({
   templates, loadTemplate,
   stores, updateItemStores,
   filterStore, setFilterStore,
+  updateItemPrice,
+  totalBudget,
+  remainingBudget,
+  showBudgetSummary,
   darkMode
 }) {
   // Stan do śledzenia zwijania/rozwijania kategorii
@@ -35,7 +40,9 @@ function ShoppingListView({
         name: newItem, 
         category: newItemCategory || (categories.length > 0 ? categories[0] : 'Inne'),
         completed: false,
-        stores: [] // Dodano pustą tablicę dla sklepów
+        stores: [], // Dodano pustą tablicę dla sklepów
+        price: 0,    // Dodano cenę
+        quantity: 1  // Dodano ilość
       }]);
       setNewItem('');
       if (categories.length > 0) {
@@ -104,8 +111,29 @@ function ShoppingListView({
     return result;
   };
 
+  // Obliczenie sumy kosztów aktualnie wyświetlanych produktów
+  const calculateTotal = (items) => {
+    return items.reduce((sum, item) => {
+      if (!item.completed && item.price) {
+        return sum + (item.price * (item.quantity || 1));
+      }
+      return sum;
+    }, 0);
+  };
+
+  // Formatowanie kwoty do wyświetlenia
+  const formatCurrency = (amount) => {
+    return amount.toLocaleString('pl-PL', { 
+      style: 'currency', 
+      currency: 'PLN',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
   // Filtrowanie produktów
   const filteredItems = filterItems(items);
+  const totalCost = calculateTotal(filteredItems);
 
   // Grupowanie produktów według kategorii
   const groupedItems = filteredItems.reduce((acc, item) => {
@@ -187,35 +215,16 @@ function ShoppingListView({
             </div>
           )}
 
-          <div className="relative ml-auto">
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className={`px-3 py-2 rounded-lg appearance-none pr-8 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} transition-colors`}
-            >
-              <option value="Wszystkie">🔍 Wszystkie kategorie</option>
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-              </svg>
-            </div>
-          </div>
-          
-          {/* Filtr sklepów */}
-          {stores && stores.length > 0 && (
+          <div className="flex flex-wrap gap-2 ml-auto">
             <div className="relative">
               <select
-                value={filterStore}
-                onChange={(e) => setFilterStore(e.target.value)}
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
                 className={`px-3 py-2 rounded-lg appearance-none pr-8 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} transition-colors`}
               >
-                <option value="all">🏪 Wszystkie sklepy</option>
-                {stores.map(store => (
-                  <option key={store.id} value={store.id}>{store.name}</option>
+                <option value="Wszystkie">🔍 Wszystkie kategorie</option>
+                {categories.map(category => (
+                  <option key={category} value={category}>{category}</option>
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
@@ -224,8 +233,66 @@ function ShoppingListView({
                 </svg>
               </div>
             </div>
-          )}
+            
+            {/* Filtr sklepów */}
+            {stores && stores.length > 0 && (
+              <div className="relative">
+                <select
+                  value={filterStore}
+                  onChange={(e) => setFilterStore(e.target.value)}
+                  className={`px-3 py-2 rounded-lg appearance-none pr-8 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} transition-colors`}
+                >
+                  <option value="all">🏪 Wszystkie sklepy</option>
+                  {stores.map(store => (
+                    <option key={store.id} value={store.id}>{store.name}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+        
+        {/* Podsumowanie kosztów */}
+        {showBudgetSummary && (
+          <div className={`mb-6 p-3 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-medium">Koszty zakupów</h3>
+                <p className="text-sm opacity-80">
+                  Suma produktów {filterCategory !== 'Wszystkie' ? `z kategorii: ${filterCategory}` : ''}
+                  {filterStore !== 'all' ? ` ze sklepu: ${stores.find(s => s.id === filterStore)?.name}` : ''}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-lg">{formatCurrency(totalCost)}</p>
+                {totalBudget > 0 && (
+                  <p className={`text-sm ${remainingBudget < 0 ? (darkMode ? 'text-red-400' : 'text-red-600') : ''}`}>
+                    Pozostało: {formatCurrency(remainingBudget)}
+                  </p>
+                )}
+              </div>
+            </div>
+            {totalBudget > 0 && (
+              <div className="mt-2">
+                <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full ${remainingBudget < 0 
+                      ? 'bg-red-500' 
+                      : remainingBudget < totalBudget * 0.2 
+                        ? 'bg-yellow-500' 
+                        : 'bg-green-500'}`}
+                    style={{ width: `${Math.min((totalCost / totalBudget) * 100, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-6">
           <h2 className="text-xl font-bold mb-4">Twoje produkty</h2>
@@ -243,6 +310,14 @@ function ShoppingListView({
                 const totalCount = categoryItems.length;
                 const progressPercent = (completedCount / totalCount) * 100;
                 
+                // Obliczanie sumy dla kategorii
+                const categoryTotal = categoryItems.reduce((sum, item) => {
+                  if (!item.completed && item.price) {
+                    return sum + (item.price * (item.quantity || 1));
+                  }
+                  return sum;
+                }, 0);
+                
                 return (
                   <div key={category} className={`border rounded-lg ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                     <div 
@@ -256,7 +331,10 @@ function ShoppingListView({
                         </h3>
                       </div>
                       <div className="flex items-center">
-                        <span className="text-sm mr-2">{completedCount}/{totalCount}</span>
+                        <span className="text-sm mr-2">
+                          {completedCount}/{totalCount}
+                          {categoryTotal > 0 && ` • ${formatCurrency(categoryTotal)}`}
+                        </span>
                         <div className="w-24 h-2 bg-gray-300 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-green-500 rounded-full"
@@ -317,15 +395,26 @@ function ShoppingListView({
                                   </span>
                                 </div>
                                 <div className="flex items-center">
+                                  {/* Price Editor */}
+                                  <PriceEditor
+                                    itemId={item.id}
+                                    price={item.price}
+                                    quantity={item.quantity}
+                                    updateItemPrice={updateItemPrice}
+                                    darkMode={darkMode}
+                                  />
+                                  
                                   {/* Store Selector */}
                                   {stores && stores.length > 0 && (
-                                    <StoreSelector
-                                      itemId={item.id}
-                                      stores={stores}
-                                      selectedStores={item.stores}
-                                      updateItemStores={updateItemStores}
-                                      darkMode={darkMode}
-                                    />
+                                    <span className="ml-2">
+                                      <StoreSelector
+                                        itemId={item.id}
+                                        stores={stores}
+                                        selectedStores={item.stores}
+                                        updateItemStores={updateItemStores}
+                                        darkMode={darkMode}
+                                      />
+                                    </span>
                                   )}
                                   
                                   <div className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity flex">
