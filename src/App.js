@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Settings from './Settings';
 
-// Domyślne kategorie
+// Domyślne kategorie jako stała (do wykorzystania przy resetowaniu)
 const DEFAULT_CATEGORIES = [
   'Warzywa i Owoce', 
   'Pieczywo', 
@@ -15,7 +15,8 @@ const DEFAULT_CATEGORIES = [
 function App() {
   const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState('');
-  const [newItemCategory, setNewItemCategory] = useState(DEFAULT_CATEGORIES[0]);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [newItemCategory, setNewItemCategory] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [editItemName, setEditItemName] = useState('');
@@ -25,11 +26,19 @@ function App() {
   const [newTemplateName, setNewTemplateName] = useState('');
   const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
 
-  // Ładowanie listy zakupów, szablonów i trybu ciemnego z localStorage
+  // Ustaw domyślną kategorię, gdy kategorie zostaną załadowane
+  useEffect(() => {
+    if (categories.length > 0 && !newItemCategory) {
+      setNewItemCategory(categories[0]);
+    }
+  }, [categories, newItemCategory]);
+
+  // Ładowanie danych z localStorage
   useEffect(() => {
     const savedItems = localStorage.getItem('shoppingList');
     const savedDarkMode = localStorage.getItem('darkMode');
     const savedTemplates = localStorage.getItem('shoppingTemplates');
+    const savedCategories = localStorage.getItem('shoppingCategories');
     
     if (savedItems) {
       setItems(JSON.parse(savedItems));
@@ -42,9 +51,13 @@ function App() {
     if (savedTemplates) {
       setTemplates(JSON.parse(savedTemplates));
     }
+
+    if (savedCategories) {
+      setCategories(JSON.parse(savedCategories));
+    }
   }, []);
 
-  // Zapis listy zakupów, szablonów i trybu ciemnego do localStorage
+  // Zapis listy zakupów i trybu ciemnego do localStorage
   useEffect(() => {
     localStorage.setItem('shoppingList', JSON.stringify(items));
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
@@ -55,16 +68,23 @@ function App() {
     localStorage.setItem('shoppingTemplates', JSON.stringify(templates));
   }, [templates]);
 
+  // Zapis kategorii do localStorage
+  useEffect(() => {
+    localStorage.setItem('shoppingCategories', JSON.stringify(categories));
+  }, [categories]);
+
   const addItem = () => {
     if (newItem.trim() !== '') {
       setItems([...items, { 
         id: Date.now(), 
         name: newItem, 
-        category: newItemCategory,
+        category: newItemCategory || (categories.length > 0 ? categories[0] : 'Inne'),
         completed: false 
       }]);
       setNewItem('');
-      setNewItemCategory(DEFAULT_CATEGORIES[0]);
+      if (categories.length > 0) {
+        setNewItemCategory(categories[0]);
+      }
     }
   };
 
@@ -168,6 +188,105 @@ function App() {
     setTemplates(templates.filter(template => template.id !== templateId));
   };
 
+  // Funkcje zarządzania kategoriami
+  const addCategory = (categoryName) => {
+    if (categoryName.trim() === '') return;
+    if (categories.includes(categoryName.trim())) return;
+    
+    setCategories([...categories, categoryName.trim()]);
+  };
+
+  const editCategory = (oldName, newName) => {
+    if (newName.trim() === '' || oldName === newName) return;
+    if (categories.includes(newName.trim())) return;
+    
+    // Aktualizujemy listę kategorii
+    setCategories(categories.map(category => 
+      category === oldName ? newName.trim() : category
+    ));
+    
+    // Aktualizujemy kategorie produktów na liście
+    setItems(items.map(item => 
+      item.category === oldName ? { ...item, category: newName.trim() } : item
+    ));
+    
+    // Aktualizujemy kategorie w szablonach
+    setTemplates(templates.map(template => ({
+      ...template,
+      items: template.items.map(item => 
+        item.category === oldName ? { ...item, category: newName.trim() } : item
+      )
+    })));
+  };
+
+  const deleteCategory = (categoryName) => {
+    // Sprawdzamy czy to nie jest ostatnia kategoria
+    if (categories.length <= 1) return;
+    
+    // Wybieramy kategorię zastępczą (pierwsza dostępna inna niż usuwana)
+    const fallbackCategory = categories.find(c => c !== categoryName) || 'Inne';
+    
+    // Usuwamy kategorię z listy
+    setCategories(categories.filter(category => category !== categoryName));
+    
+    // Przenosimy produkty do kategorii zastępczej
+    setItems(items.map(item => 
+      item.category === categoryName ? { ...item, category: fallbackCategory } : item
+    ));
+    
+    // Aktualizujemy kategorie w szablonach
+    setTemplates(templates.map(template => ({
+      ...template,
+      items: template.items.map(item => 
+        item.category === categoryName ? { ...item, category: fallbackCategory } : item
+      )
+    })));
+    
+    // Aktualizujemy filtr kategorii jeśli trzeba
+    if (filterCategory === categoryName) {
+      setFilterCategory('Wszystkie');
+    }
+    
+    // Aktualizujemy kategorię nowego przedmiotu jeśli trzeba
+    if (newItemCategory === categoryName) {
+      setNewItemCategory(fallbackCategory);
+    }
+  };
+
+  const resetCategories = () => {
+    // Mapujemy stare kategorie do domyślnych
+    const categoryMap = {};
+    categories.forEach((category, index) => {
+      if (index < DEFAULT_CATEGORIES.length) {
+        categoryMap[category] = DEFAULT_CATEGORIES[index];
+      } else {
+        categoryMap[category] = DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]; // Mapujemy nadmiarowe do "Inne"
+      }
+    });
+    
+    // Aktualizujemy kategorie produktów
+    setItems(items.map(item => ({
+      ...item,
+      category: categoryMap[item.category] || DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
+    })));
+    
+    // Aktualizujemy kategorie w szablonach
+    setTemplates(templates.map(template => ({
+      ...template,
+      items: template.items.map(item => ({
+        ...item,
+        category: categoryMap[item.category] || DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
+      }))
+    })));
+    
+    // Przywracamy domyślne kategorie
+    setCategories([...DEFAULT_CATEGORIES]);
+    
+    // Aktualizujemy filtr i kategorię nowego przedmiotu
+    setFilterCategory('Wszystkie');
+    setNewItemCategory(DEFAULT_CATEGORIES[0]);
+  };
+
   // Filtrowanie produktów
   const filteredItems = filterCategory === 'Wszystkie' 
     ? items 
@@ -217,15 +336,17 @@ function App() {
           </div>
           
           {/* Wybór kategorii */}
-          <select
-            value={newItemCategory}
-            onChange={(e) => setNewItemCategory(e.target.value)}
-            className={`w-full p-2 border rounded ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white'}`}
-          >
-            {DEFAULT_CATEGORIES.map(category => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
+          {categories.length > 0 && (
+            <select
+              value={newItemCategory}
+              onChange={(e) => setNewItemCategory(e.target.value)}
+              className={`w-full p-2 border rounded ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white'}`}
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Przyciski szablonów */}
@@ -265,7 +386,7 @@ function App() {
             className={`w-full p-2 border rounded ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white'}`}
           >
             <option value="Wszystkie">Wszystkie kategorie</option>
-            {DEFAULT_CATEGORIES.map(category => (
+            {categories.map(category => (
               <option key={category} value={category}>{category}</option>
             ))}
           </select>
@@ -357,6 +478,11 @@ function App() {
         templates={templates}
         loadTemplate={loadTemplate}
         deleteTemplate={deleteTemplate}
+        categories={categories}
+        addCategory={addCategory}
+        editCategory={editCategory}
+        deleteCategory={deleteCategory}
+        resetCategories={resetCategories}
       />
 
       {/* Modal do zapisywania szablonu */}
