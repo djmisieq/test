@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Settings from './Settings';
 
 // Domyślne kategorie
 const DEFAULT_CATEGORIES = [
@@ -19,6 +20,7 @@ function App() {
   const [editingItem, setEditingItem] = useState(null);
   const [editItemName, setEditItemName] = useState('');
   const [filterCategory, setFilterCategory] = useState('Wszystkie');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Ładowanie listy zakupów z localStorage
   useEffect(() => {
@@ -89,6 +91,14 @@ function App() {
     setEditItemName('');
   };
 
+  const openSettings = () => {
+    setSettingsOpen(true);
+  };
+
+  const closeSettings = () => {
+    setSettingsOpen(false);
+  };
+
   // Filtrowanie produktów
   const filteredItems = filterCategory === 'Wszystkie' 
     ? items 
@@ -108,12 +118,14 @@ function App() {
       <div className="max-w-md mx-auto pt-10 p-6 rounded-lg shadow-md">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Lista Zakupów</h1>
-          <button 
-            onClick={toggleDarkMode}
-            className={`p-2 rounded-full ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} transition-colors`}
-          >
-            {darkMode ? '☀️' : '🌙'}
-          </button>
+          <div className="flex space-x-2">
+            <button 
+              onClick={openSettings}
+              className={`p-2 rounded-full ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} transition-colors`}
+            >
+              ⚙️
+            </button>
+          </div>
         </div>
       
         {/* Dodawanie produktu z kategorią */}
@@ -237,6 +249,14 @@ function App() {
           </div>
         ))}
       </div>
+
+      {/* Komponent ustawień */}
+      <Settings 
+        isOpen={settingsOpen} 
+        onClose={closeSettings} 
+        darkMode={darkMode} 
+        toggleDarkMode={toggleDarkMode}
+      />
     </div>
   );
 }
