@@ -4,6 +4,7 @@ import ShoppingListView from './components/ShoppingListView';
 import TemplatesView from './components/TemplatesView';
 import CategoriesView from './components/CategoriesView';
 import SettingsView from './components/SettingsView';
+import StoresView from './components/StoresView';
 
 // Domyślne kategorie jako stała (do wykorzystania przy resetowaniu)
 const DEFAULT_CATEGORIES = [
@@ -21,6 +22,8 @@ function App() {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [templates, setTemplates] = useState([]);
+  const [stores, setStores] = useState([]);
+  const [storesToVisit, setStoresToVisit] = useState([]);
   
   // Stany UI
   const [darkMode, setDarkMode] = useState(false);
@@ -33,6 +36,7 @@ function App() {
   const [editingItem, setEditingItem] = useState(null);
   const [editItemName, setEditItemName] = useState('');
   const [filterCategory, setFilterCategory] = useState('Wszystkie');
+  const [filterStore, setFilterStore] = useState('all');
   const [newTemplateName, setNewTemplateName] = useState('');
   const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
   
@@ -49,6 +53,8 @@ function App() {
     const savedDarkMode = localStorage.getItem('darkMode');
     const savedTemplates = localStorage.getItem('shoppingTemplates');
     const savedCategories = localStorage.getItem('shoppingCategories');
+    const savedStores = localStorage.getItem('shoppingStores');
+    const savedStoresToVisit = localStorage.getItem('shoppingStoresToVisit');
     
     if (savedItems) {
       setItems(JSON.parse(savedItems));
@@ -64,6 +70,14 @@ function App() {
 
     if (savedCategories) {
       setCategories(JSON.parse(savedCategories));
+    }
+
+    if (savedStores) {
+      setStores(JSON.parse(savedStores));
+    }
+
+    if (savedStoresToVisit) {
+      setStoresToVisit(JSON.parse(savedStoresToVisit));
     }
   }, []);
 
@@ -81,6 +95,14 @@ function App() {
     localStorage.setItem('shoppingCategories', JSON.stringify(categories));
   }, [categories]);
 
+  useEffect(() => {
+    localStorage.setItem('shoppingStores', JSON.stringify(stores));
+  }, [stores]);
+
+  useEffect(() => {
+    localStorage.setItem('shoppingStoresToVisit', JSON.stringify(storesToVisit));
+  }, [storesToVisit]);
+
   // Funkcje UI
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -97,10 +119,11 @@ function App() {
     // Filtrujemy tylko niezakończone elementy do szablonu i usuwamy pole completed
     const templateItems = items
       .filter(item => !item.completed)
-      .map(({ id, name, category }) => ({
+      .map(({ id, name, category, stores }) => ({
         id: Date.now() + Math.random(), // Generujemy nowe ID dla szablonu
         name,
-        category
+        category,
+        stores: stores || [] // Zachowujemy przypisane sklepy
       }));
     
     const newTemplate = {
@@ -126,7 +149,8 @@ function App() {
       .map(item => ({
         ...item,
         id: Date.now() + Math.random(), // Generujemy nowe unikalne ID
-        completed: false
+        completed: false,
+        stores: item.stores || [] // Zachowujemy przypisane sklepy
       }));
     
     if (newItems.length > 0) {
@@ -237,6 +261,76 @@ function App() {
     setNewItemCategory(DEFAULT_CATEGORIES[0]);
   };
 
+  // Funkcje zarządzania sklepami
+  const addStore = (store) => {
+    setStores([...stores, store]);
+  };
+
+  const editStore = (storeId, storeData) => {
+    setStores(stores.map(store => 
+      store.id === storeId 
+        ? { ...store, ...storeData } 
+        : store
+    ));
+  };
+
+  const deleteStore = (storeId) => {
+    // Usuwamy sklep z listy
+    setStores(stores.filter(store => store.id !== storeId));
+    
+    // Usuwamy referencje do sklepu z produktów
+    setItems(items.map(item => ({
+      ...item,
+      stores: item.stores 
+        ? item.stores.filter(id => id !== storeId)
+        : []
+    })));
+    
+    // Usuwamy referencje do sklepu z szablonów
+    setTemplates(templates.map(template => ({
+      ...template,
+      items: template.items.map(item => ({
+        ...item,
+        stores: item.stores 
+          ? item.stores.filter(id => id !== storeId)
+          : []
+      }))
+    })));
+    
+    // Usuwamy ze sklepów do odwiedzenia
+    setStoresToVisit(storesToVisit.filter(id => id !== storeId));
+    
+    // Resetujemy filtr sklepu jeśli trzeba
+    if (filterStore === storeId) {
+      setFilterStore('all');
+    }
+  };
+
+  const setStoreToVisit = (storeId, toVisit) => {
+    if (toVisit) {
+      if (!storesToVisit.includes(storeId)) {
+        setStoresToVisit([...storesToVisit, storeId]);
+      }
+    } else {
+      setStoresToVisit(storesToVisit.filter(id => id !== storeId));
+    }
+  };
+
+  const calculateOptimalRoute = (storeIds) => {
+    console.log("Obliczanie optymalnej trasy dla sklepów:", storeIds);
+    // W rzeczywistej implementacji tutaj byłoby połączenie z API map
+    // Na potrzeby demonstracji zwracamy po prostu te same sklepy
+    return storeIds;
+  };
+
+  const updateItemStores = (itemId, storeIds) => {
+    setItems(items.map(item => 
+      item.id === itemId 
+        ? { ...item, stores: storeIds } 
+        : item
+    ));
+  };
+
   // Renderowanie odpowiedniego widoku
   const renderActiveView = () => {
     switch(activeView) {
@@ -263,6 +357,10 @@ function App() {
             saveAsTemplate={saveAsTemplate}
             templates={templates}
             loadTemplate={loadTemplate}
+            stores={stores}
+            updateItemStores={updateItemStores}
+            filterStore={filterStore}
+            setFilterStore={setFilterStore}
             darkMode={darkMode}
           />
         );
@@ -283,6 +381,18 @@ function App() {
             editCategory={editCategory}
             deleteCategory={deleteCategory}
             resetCategories={resetCategories}
+            darkMode={darkMode}
+          />
+        );
+      case 'stores':
+        return (
+          <StoresView
+            stores={stores}
+            addStore={addStore}
+            editStore={editStore}
+            deleteStore={deleteStore}
+            setStoreToVisit={setStoreToVisit}
+            calculateOptimalRoute={calculateOptimalRoute}
             darkMode={darkMode}
           />
         );
@@ -309,6 +419,8 @@ function App() {
       itemsCount={items.length}
       templatesCount={templates.length}
       categoriesCount={categories.length}
+      storesCount={stores.length}
+      storesToVisitCount={storesToVisit.length}
     >
       {renderActiveView()}
     </Layout>
