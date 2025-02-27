@@ -6,6 +6,8 @@ import CategoriesView from './components/CategoriesView';
 import SettingsView from './components/SettingsView';
 import StoresView from './components/StoresView';
 import BudgetView from './components/BudgetView';
+import GroupedShoppingList from './components/GroupedShoppingList';
+import MenuPlannerView from './components/MenuPlannerView';
 
 // Domyślne kategorie jako stała (do wykorzystania przy resetowaniu)
 const DEFAULT_CATEGORIES = [
@@ -32,6 +34,7 @@ function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeView, setActiveView] = useState('shopping-list');
+  const [listViewMode, setListViewMode] = useState('standard'); // 'standard' lub 'grouped'
   
   // Stany formularzy i edycji
   const [newItem, setNewItem] = useState('');
@@ -60,6 +63,7 @@ function App() {
     const savedStoresToVisit = localStorage.getItem('shoppingStoresToVisit');
     const savedBudget = localStorage.getItem('shoppingBudget');
     const savedCategoryBudgets = localStorage.getItem('shoppingCategoryBudgets');
+    const savedListViewMode = localStorage.getItem('shoppingListViewMode');
     
     if (savedItems) {
       setItems(JSON.parse(savedItems));
@@ -92,6 +96,10 @@ function App() {
     if (savedCategoryBudgets) {
       setCategoryBudgets(JSON.parse(savedCategoryBudgets));
     }
+    
+    if (savedListViewMode) {
+      setListViewMode(JSON.parse(savedListViewMode));
+    }
   }, []);
 
   // Zapis danych do localStorage
@@ -123,6 +131,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('shoppingCategoryBudgets', JSON.stringify(categoryBudgets));
   }, [categoryBudgets]);
+  
+  useEffect(() => {
+    localStorage.setItem('shoppingListViewMode', JSON.stringify(listViewMode));
+  }, [listViewMode]);
 
   // Funkcje UI
   const toggleSidebar = () => {
@@ -131,6 +143,27 @@ function App() {
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
+  };
+  
+  const toggleListViewMode = () => {
+    setListViewMode(listViewMode === 'standard' ? 'grouped' : 'standard');
+  };
+  
+  // Funkcja do dodawania wielu przedmiotów na raz (np. z planera menu)
+  const addItemsToShoppingList = (newItems) => {
+    if (!Array.isArray(newItems) || newItems.length === 0) return;
+    
+    // Sprawdzamy, czy przedmioty o takich nazwach już istnieją
+    const existingNames = new Set(items.map(item => item.name.toLowerCase()));
+    
+    // Filtrujemy tylko nowe przedmioty
+    const uniqueNewItems = newItems.filter(item => 
+      !existingNames.has(item.name.toLowerCase())
+    );
+    
+    if (uniqueNewItems.length > 0) {
+      setItems([...items, ...uniqueNewItems]);
+    }
   };
   
   // Funkcje zarządzania szablonami
@@ -412,43 +445,96 @@ function App() {
   const totalBudget = budget?.total || 0;
   const remainingBudget = totalBudget - totalCost;
 
+  // Renderowanie komponentu listy zakupów
+  const renderShoppingList = () => {
+    if (listViewMode === 'grouped') {
+      return (
+        <div className="p-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Lista Zakupów - Wg Sklepów</h2>
+            <button 
+              onClick={toggleListViewMode}
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Widok Standardowy
+            </button>
+          </div>
+          <GroupedShoppingList 
+            items={items.filter(item => {
+              // Filtrowanie według kategorii
+              if (filterCategory !== 'Wszystkie' && item.category !== filterCategory) {
+                return false;
+              }
+              // Filtrowanie według sklepu
+              if (filterStore !== 'all') {
+                return item.stores && item.stores.includes(filterStore);
+              }
+              return true;
+            })}
+            stores={stores}
+            toggleComplete={(itemId) => {
+              setItems(items.map(item => 
+                item.id === itemId ? { ...item, completed: !item.completed } : item
+              ));
+            }}
+            deleteItem={(itemId) => {
+              setItems(items.filter(item => item.id !== itemId));
+            }}
+            startEditing={(itemId) => {
+              const item = items.find(i => i.id === itemId);
+              if (item) {
+                setEditingItem(itemId);
+                setEditItemName(item.name);
+              }
+            }}
+            updateItemStores={updateItemStores}
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <ShoppingListView
+        items={items}
+        setItems={setItems}
+        categories={categories}
+        newItem={newItem}
+        setNewItem={setNewItem}
+        newItemCategory={newItemCategory}
+        setNewItemCategory={setNewItemCategory}
+        editingItem={editingItem}
+        setEditingItem={setEditingItem}
+        editItemName={editItemName}
+        setEditItemName={setEditItemName}
+        filterCategory={filterCategory}
+        setFilterCategory={setFilterCategory}
+        saveTemplateModalOpen={saveTemplateModalOpen}
+        setSaveTemplateModalOpen={setSaveTemplateModalOpen}
+        newTemplateName={newTemplateName}
+        setNewTemplateName={setNewTemplateName}
+        saveAsTemplate={saveAsTemplate}
+        templates={templates}
+        loadTemplate={loadTemplate}
+        stores={stores}
+        updateItemStores={updateItemStores}
+        filterStore={filterStore}
+        setFilterStore={setFilterStore}
+        updateItemPrice={updateItemPrice}
+        totalBudget={totalBudget}
+        remainingBudget={remainingBudget}
+        showBudgetSummary={totalBudget > 0}
+        darkMode={darkMode}
+        toggleListViewMode={toggleListViewMode}
+        listViewMode={listViewMode}
+      />
+    );
+  };
+
   // Renderowanie odpowiedniego widoku
   const renderActiveView = () => {
     switch(activeView) {
       case 'shopping-list':
-        return (
-          <ShoppingListView
-            items={items}
-            setItems={setItems}
-            categories={categories}
-            newItem={newItem}
-            setNewItem={setNewItem}
-            newItemCategory={newItemCategory}
-            setNewItemCategory={setNewItemCategory}
-            editingItem={editingItem}
-            setEditingItem={setEditingItem}
-            editItemName={editItemName}
-            setEditItemName={setEditItemName}
-            filterCategory={filterCategory}
-            setFilterCategory={setFilterCategory}
-            saveTemplateModalOpen={saveTemplateModalOpen}
-            setSaveTemplateModalOpen={setSaveTemplateModalOpen}
-            newTemplateName={newTemplateName}
-            setNewTemplateName={setNewTemplateName}
-            saveAsTemplate={saveAsTemplate}
-            templates={templates}
-            loadTemplate={loadTemplate}
-            stores={stores}
-            updateItemStores={updateItemStores}
-            filterStore={filterStore}
-            setFilterStore={setFilterStore}
-            updateItemPrice={updateItemPrice}
-            totalBudget={totalBudget}
-            remainingBudget={remainingBudget}
-            showBudgetSummary={totalBudget > 0}
-            darkMode={darkMode}
-          />
-        );
+        return renderShoppingList();
       case 'templates':
         return (
           <TemplatesView
@@ -490,6 +576,13 @@ function App() {
             updateCategoryBudget={updateCategoryBudget}
             items={items}
             categories={categories}
+            darkMode={darkMode}
+          />
+        );
+      case 'menu-planner':
+        return (
+          <MenuPlannerView
+            addItemsToShoppingList={addItemsToShoppingList}
             darkMode={darkMode}
           />
         );
