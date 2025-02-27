@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 
 const MealPlanner = ({ addItemsToShoppingList, recipes = [], fridgeItems = [], darkMode }) => {
   const daysOfWeek = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela'];
@@ -320,13 +319,16 @@ const MealPlanner = ({ addItemsToShoppingList, recipes = [], fridgeItems = [], d
                             })}
                           </ul>
                           {mealPlan[day][mealType].recipeId && (
-                            <Link 
-                              to={`/recipe/${mealPlan[day][mealType].recipeId}`}
-                              className="mt-2 block text-blue-600 hover:underline"
-                              onClick={(e) => e.stopPropagation()}
+                            <div 
+                              className="mt-2 block text-blue-600 hover:underline cursor-pointer"
+                              onClick={() => {
+                                if (typeof window !== 'undefined') {
+                                  window.location.href = `#/recipe/${mealPlan[day][mealType].recipeId}`;
+                                }
+                              }}
                             >
                               Zobacz pełny przepis
-                            </Link>
+                            </div>
                           )}
                         </div>
                         <div className="absolute right-0 top-0 flex">
