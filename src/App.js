@@ -5,6 +5,7 @@ import TemplatesView from './components/TemplatesView';
 import CategoriesView from './components/CategoriesView';
 import SettingsView from './components/SettingsView';
 import StoresView from './components/StoresView';
+import BudgetView from './components/BudgetView';
 
 // Domyślne kategorie jako stała (do wykorzystania przy resetowaniu)
 const DEFAULT_CATEGORIES = [
@@ -24,6 +25,8 @@ function App() {
   const [templates, setTemplates] = useState([]);
   const [stores, setStores] = useState([]);
   const [storesToVisit, setStoresToVisit] = useState([]);
+  const [budget, setBudget] = useState({ total: 0 });
+  const [categoryBudgets, setCategoryBudgets] = useState({});
   
   // Stany UI
   const [darkMode, setDarkMode] = useState(false);
@@ -55,6 +58,8 @@ function App() {
     const savedCategories = localStorage.getItem('shoppingCategories');
     const savedStores = localStorage.getItem('shoppingStores');
     const savedStoresToVisit = localStorage.getItem('shoppingStoresToVisit');
+    const savedBudget = localStorage.getItem('shoppingBudget');
+    const savedCategoryBudgets = localStorage.getItem('shoppingCategoryBudgets');
     
     if (savedItems) {
       setItems(JSON.parse(savedItems));
@@ -78,6 +83,14 @@ function App() {
 
     if (savedStoresToVisit) {
       setStoresToVisit(JSON.parse(savedStoresToVisit));
+    }
+
+    if (savedBudget) {
+      setBudget(JSON.parse(savedBudget));
+    }
+
+    if (savedCategoryBudgets) {
+      setCategoryBudgets(JSON.parse(savedCategoryBudgets));
     }
   }, []);
 
@@ -103,6 +116,14 @@ function App() {
     localStorage.setItem('shoppingStoresToVisit', JSON.stringify(storesToVisit));
   }, [storesToVisit]);
 
+  useEffect(() => {
+    localStorage.setItem('shoppingBudget', JSON.stringify(budget));
+  }, [budget]);
+
+  useEffect(() => {
+    localStorage.setItem('shoppingCategoryBudgets', JSON.stringify(categoryBudgets));
+  }, [categoryBudgets]);
+
   // Funkcje UI
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -119,11 +140,13 @@ function App() {
     // Filtrujemy tylko niezakończone elementy do szablonu i usuwamy pole completed
     const templateItems = items
       .filter(item => !item.completed)
-      .map(({ id, name, category, stores }) => ({
+      .map(({ id, name, category, stores, price, quantity }) => ({
         id: Date.now() + Math.random(), // Generujemy nowe ID dla szablonu
         name,
         category,
-        stores: stores || [] // Zachowujemy przypisane sklepy
+        stores: stores || [], // Zachowujemy przypisane sklepy
+        price: price || 0,     // Zachowujemy cenę
+        quantity: quantity || 1 // Zachowujemy ilość
       }));
     
     const newTemplate = {
@@ -150,7 +173,9 @@ function App() {
         ...item,
         id: Date.now() + Math.random(), // Generujemy nowe unikalne ID
         completed: false,
-        stores: item.stores || [] // Zachowujemy przypisane sklepy
+        stores: item.stores || [], // Zachowujemy przypisane sklepy
+        price: item.price || 0,     // Zachowujemy cenę
+        quantity: item.quantity || 1 // Zachowujemy ilość
       }));
     
     if (newItems.length > 0) {
@@ -191,6 +216,14 @@ function App() {
         item.category === oldName ? { ...item, category: newName.trim() } : item
       )
     })));
+    
+    // Aktualizujemy budżety kategorii
+    if (categoryBudgets[oldName]) {
+      const newBudgets = { ...categoryBudgets };
+      newBudgets[newName.trim()] = newBudgets[oldName];
+      delete newBudgets[oldName];
+      setCategoryBudgets(newBudgets);
+    }
   };
 
   const deleteCategory = (categoryName) => {
@@ -215,6 +248,11 @@ function App() {
         item.category === categoryName ? { ...item, category: fallbackCategory } : item
       )
     })));
+    
+    // Aktualizujemy budżety kategorii
+    const newBudgets = { ...categoryBudgets };
+    delete newBudgets[categoryName];
+    setCategoryBudgets(newBudgets);
     
     // Aktualizujemy filtr kategorii jeśli trzeba
     if (filterCategory === categoryName) {
@@ -252,6 +290,15 @@ function App() {
         category: categoryMap[item.category] || DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
       }))
     })));
+    
+    // Aktualizujemy budżety kategorii
+    const newBudgets = {};
+    Object.entries(categoryBudgets).forEach(([category, value]) => {
+      if (categoryMap[category]) {
+        newBudgets[categoryMap[category]] = value;
+      }
+    });
+    setCategoryBudgets(newBudgets);
     
     // Przywracamy domyślne kategorie
     setCategories([...DEFAULT_CATEGORIES]);
@@ -331,6 +378,40 @@ function App() {
     ));
   };
 
+  // Funkcje zarządzania budżetem
+  const updateBudget = (newBudget) => {
+    setBudget(newBudget);
+  };
+
+  const updateCategoryBudget = (category, amount) => {
+    setCategoryBudgets({
+      ...categoryBudgets,
+      [category]: amount
+    });
+  };
+
+  const updateItemPrice = (itemId, price, quantity) => {
+    setItems(items.map(item => 
+      item.id === itemId 
+        ? { ...item, price, quantity } 
+        : item
+    ));
+  };
+
+  // Obliczanie aktualnych kosztów dla listy zakupów
+  const calculateTotalCost = () => {
+    return items.reduce((total, item) => {
+      if (!item.completed && item.price) {
+        return total + (item.price * (item.quantity || 1));
+      }
+      return total;
+    }, 0);
+  };
+
+  const totalCost = calculateTotalCost();
+  const totalBudget = budget?.total || 0;
+  const remainingBudget = totalBudget - totalCost;
+
   // Renderowanie odpowiedniego widoku
   const renderActiveView = () => {
     switch(activeView) {
@@ -361,6 +442,10 @@ function App() {
             updateItemStores={updateItemStores}
             filterStore={filterStore}
             setFilterStore={setFilterStore}
+            updateItemPrice={updateItemPrice}
+            totalBudget={totalBudget}
+            remainingBudget={remainingBudget}
+            showBudgetSummary={totalBudget > 0}
             darkMode={darkMode}
           />
         );
@@ -396,6 +481,18 @@ function App() {
             darkMode={darkMode}
           />
         );
+      case 'budget':
+        return (
+          <BudgetView
+            budget={budget}
+            updateBudget={updateBudget}
+            categoryBudgets={categoryBudgets}
+            updateCategoryBudget={updateCategoryBudget}
+            items={items}
+            categories={categories}
+            darkMode={darkMode}
+          />
+        );
       case 'settings':
         return (
           <SettingsView
@@ -421,6 +518,9 @@ function App() {
       categoriesCount={categories.length}
       storesCount={stores.length}
       storesToVisitCount={storesToVisit.length}
+      showBudget={true}
+      budgetAmount={budget?.total || 0}
+      remainingBudget={remainingBudget}
     >
       {renderActiveView()}
     </Layout>
