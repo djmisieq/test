@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import ShoppingListView from './components/ShoppingListView';
 import TemplatesView from './components/TemplatesView';
@@ -8,6 +9,10 @@ import StoresView from './components/StoresView';
 import BudgetView from './components/BudgetView';
 import GroupedShoppingList from './components/GroupedShoppingList';
 import MenuPlannerView from './components/MenuPlannerView';
+import FridgeView from './components/FridgeView';
+import RecipesView from './components/RecipesView';
+import RecipeDetail from './components/RecipeDetail';
+import RecipeEditor from './components/RecipeEditor';
 
 // Domyślne kategorie jako stała (do wykorzystania przy resetowaniu)
 const DEFAULT_CATEGORIES = [
@@ -29,6 +34,8 @@ function App() {
   const [storesToVisit, setStoresToVisit] = useState([]);
   const [budget, setBudget] = useState({ total: 0 });
   const [categoryBudgets, setCategoryBudgets] = useState({});
+  const [fridgeItems, setFridgeItems] = useState([]);
+  const [recipes, setRecipes] = useState([]);
   
   // Stany UI
   const [darkMode, setDarkMode] = useState(false);
@@ -64,6 +71,8 @@ function App() {
     const savedBudget = localStorage.getItem('shoppingBudget');
     const savedCategoryBudgets = localStorage.getItem('shoppingCategoryBudgets');
     const savedListViewMode = localStorage.getItem('shoppingListViewMode');
+    const savedFridgeItems = localStorage.getItem('shoppingFridgeItems');
+    const savedRecipes = localStorage.getItem('shoppingRecipes');
     
     if (savedItems) {
       setItems(JSON.parse(savedItems));
@@ -100,6 +109,14 @@ function App() {
     if (savedListViewMode) {
       setListViewMode(JSON.parse(savedListViewMode));
     }
+    
+    if (savedFridgeItems) {
+      setFridgeItems(JSON.parse(savedFridgeItems));
+    }
+    
+    if (savedRecipes) {
+      setRecipes(JSON.parse(savedRecipes));
+    }
   }, []);
 
   // Zapis danych do localStorage
@@ -135,6 +152,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem('shoppingListViewMode', JSON.stringify(listViewMode));
   }, [listViewMode]);
+  
+  useEffect(() => {
+    localStorage.setItem('shoppingFridgeItems', JSON.stringify(fridgeItems));
+  }, [fridgeItems]);
+  
+  useEffect(() => {
+    localStorage.setItem('shoppingRecipes', JSON.stringify(recipes));
+  }, [recipes]);
 
   // Funkcje UI
   const toggleSidebar = () => {
@@ -257,6 +282,26 @@ function App() {
       delete newBudgets[oldName];
       setCategoryBudgets(newBudgets);
     }
+    
+    // Aktualizujemy kategorie w produktach lodówki
+    setFridgeItems(fridgeItems.map(item => 
+      item.category === oldName ? { ...item, category: newName.trim() } : item
+    ));
+    
+    // Aktualizujemy kategorie w przepisach
+    setRecipes(recipes.map(recipe => {
+      // Aktualizujemy kategorię przepisu
+      const updatedRecipe = recipe.category === oldName ? 
+        { ...recipe, category: newName.trim() } : recipe;
+      
+      // Aktualizujemy kategorie składników przepisu
+      updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => 
+        ingredient.category === oldName ? 
+          { ...ingredient, category: newName.trim() } : ingredient
+      );
+      
+      return updatedRecipe;
+    }));
   };
 
   const deleteCategory = (categoryName) => {
@@ -296,6 +341,26 @@ function App() {
     if (newItemCategory === categoryName) {
       setNewItemCategory(fallbackCategory);
     }
+    
+    // Aktualizujemy kategorie w produktach lodówki
+    setFridgeItems(fridgeItems.map(item => 
+      item.category === categoryName ? { ...item, category: fallbackCategory } : item
+    ));
+    
+    // Aktualizujemy kategorie w przepisach
+    setRecipes(recipes.map(recipe => {
+      // Aktualizujemy kategorię przepisu
+      const updatedRecipe = recipe.category === categoryName ? 
+        { ...recipe, category: fallbackCategory } : recipe;
+      
+      // Aktualizujemy kategorie składników przepisu
+      updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => 
+        ingredient.category === categoryName ? 
+          { ...ingredient, category: fallbackCategory } : ingredient
+      );
+      
+      return updatedRecipe;
+    }));
   };
 
   const resetCategories = () => {
@@ -332,6 +397,29 @@ function App() {
       }
     });
     setCategoryBudgets(newBudgets);
+    
+    // Aktualizujemy kategorie w produktach lodówki
+    setFridgeItems(fridgeItems.map(item => ({
+      ...item,
+      category: categoryMap[item.category] || DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
+    })));
+    
+    // Aktualizujemy kategorie w przepisach
+    setRecipes(recipes.map(recipe => {
+      // Aktualizujemy kategorię przepisu
+      const updatedRecipe = {
+        ...recipe,
+        category: categoryMap[recipe.category] || DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
+      };
+      
+      // Aktualizujemy kategorie składników przepisu
+      updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => ({
+        ...ingredient,
+        category: categoryMap[ingredient.category] || DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
+      }));
+      
+      return updatedRecipe;
+    }));
     
     // Przywracamy domyślne kategorie
     setCategories([...DEFAULT_CATEGORIES]);
@@ -444,6 +532,31 @@ function App() {
   const totalCost = calculateTotalCost();
   const totalBudget = budget?.total || 0;
   const remainingBudget = totalBudget - totalCost;
+  
+  // Funkcje zarządzania lodówką i przepisami
+  
+  // Zapisywanie przepisu
+  const saveRecipe = (recipe) => {
+    // Jeśli przepis ma już ID, aktualizujemy go
+    if (recipe.id) {
+      setRecipes(recipes.map(r => 
+        r.id === recipe.id ? recipe : r
+      ));
+    } else {
+      // W przeciwnym razie dodajemy nowy przepis
+      const newRecipe = {
+        ...recipe,
+        id: Date.now(),
+        createdAt: new Date().toISOString()
+      };
+      setRecipes([...recipes, newRecipe]);
+    }
+  };
+  
+  // Usuwanie przepisu
+  const deleteRecipe = (recipeId) => {
+    setRecipes(recipes.filter(recipe => recipe.id !== recipeId));
+  };
 
   // Renderowanie komponentu listy zakupów
   const renderShoppingList = () => {
@@ -535,6 +648,59 @@ function App() {
     switch(activeView) {
       case 'shopping-list':
         return renderShoppingList();
+        
+      case 'fridge':
+        return (
+          <FridgeView
+            fridgeItems={fridgeItems}
+            setFridgeItems={setFridgeItems}
+            categories={categories}
+            darkMode={darkMode}
+          />
+        );
+        
+      case 'recipes':
+        // Renderowanie komponentów związanych z przepisami w kontenerze Router
+        return (
+          <Router>
+            <Routes>
+              <Route path="/" element={
+                <RecipesView
+                  recipes={recipes}
+                  deleteRecipe={deleteRecipe}
+                  categories={categories}
+                  darkMode={darkMode}
+                />
+              } />
+              <Route path="/recipe/:id" element={
+                <RecipeDetail
+                  recipes={recipes}
+                  addItemsToShoppingList={addItemsToShoppingList}
+                  fridgeItems={fridgeItems}
+                  darkMode={darkMode}
+                />
+              } />
+              <Route path="/recipe/edit/:id" element={
+                <RecipeEditor
+                  recipes={recipes}
+                  saveRecipe={saveRecipe}
+                  categories={categories}
+                  darkMode={darkMode}
+                />
+              } />
+              <Route path="/recipe/new" element={
+                <RecipeEditor
+                  recipes={recipes}
+                  saveRecipe={saveRecipe}
+                  categories={categories}
+                  darkMode={darkMode}
+                />
+              } />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </Router>
+        );
+        
       case 'templates':
         return (
           <TemplatesView
@@ -544,6 +710,7 @@ function App() {
             darkMode={darkMode}
           />
         );
+        
       case 'categories':
         return (
           <CategoriesView
@@ -555,6 +722,7 @@ function App() {
             darkMode={darkMode}
           />
         );
+        
       case 'stores':
         return (
           <StoresView
@@ -567,6 +735,7 @@ function App() {
             darkMode={darkMode}
           />
         );
+        
       case 'budget':
         return (
           <BudgetView
@@ -579,13 +748,17 @@ function App() {
             darkMode={darkMode}
           />
         );
+        
       case 'menu-planner':
         return (
           <MenuPlannerView
             addItemsToShoppingList={addItemsToShoppingList}
+            recipes={recipes}
+            fridgeItems={fridgeItems}
             darkMode={darkMode}
           />
         );
+        
       case 'settings':
         return (
           <SettingsView
@@ -593,6 +766,7 @@ function App() {
             toggleDarkMode={toggleDarkMode}
           />
         );
+        
       default:
         return null;
     }
@@ -611,6 +785,8 @@ function App() {
       categoriesCount={categories.length}
       storesCount={stores.length}
       storesToVisitCount={storesToVisit.length}
+      fridgeItemsCount={fridgeItems.length}
+      recipesCount={recipes.length}
       showBudget={true}
       budgetAmount={budget?.total || 0}
       remainingBudget={remainingBudget}
