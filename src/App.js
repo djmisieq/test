@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import ShoppingListView from './components/ShoppingListView';
 import TemplatesView from './components/TemplatesView';
@@ -53,6 +53,32 @@ function App() {
   const [newTemplateName, setNewTemplateName] = useState('');
   const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
   
+  // Stan błędów
+  const [error, setError] = useState(null);
+  
+  // Hooks routingu
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Usuwanie błędu po czasie
+  useEffect(() => {
+    let errorTimeout;
+    if (error) {
+      errorTimeout = setTimeout(() => setError(null), 5000);
+    }
+    return () => {
+      if (errorTimeout) clearTimeout(errorTimeout);
+    };
+  }, [error]);
+  
+  // Przejście do odpowiedniego widoku na podstawie ścieżki URL
+  useEffect(() => {
+    const pathname = location.pathname;
+    if (pathname.startsWith('/recipes')) {
+      setActiveView('recipes');
+    }
+  }, [location.pathname]);
+  
   // Ustaw domyślną kategorię, gdy kategorie zostaną załadowane
   useEffect(() => {
     if (categories.length > 0 && !newItemCategory) {
@@ -62,103 +88,122 @@ function App() {
 
   // Ładowanie danych z localStorage
   useEffect(() => {
-    const savedItems = localStorage.getItem('shoppingList');
-    const savedDarkMode = localStorage.getItem('darkMode');
-    const savedTemplates = localStorage.getItem('shoppingTemplates');
-    const savedCategories = localStorage.getItem('shoppingCategories');
-    const savedStores = localStorage.getItem('shoppingStores');
-    const savedStoresToVisit = localStorage.getItem('shoppingStoresToVisit');
-    const savedBudget = localStorage.getItem('shoppingBudget');
-    const savedCategoryBudgets = localStorage.getItem('shoppingCategoryBudgets');
-    const savedListViewMode = localStorage.getItem('shoppingListViewMode');
-    const savedFridgeItems = localStorage.getItem('shoppingFridgeItems');
-    const savedRecipes = localStorage.getItem('shoppingRecipes');
-    
-    if (savedItems) {
-      setItems(JSON.parse(savedItems));
-    }
-    
-    if (savedDarkMode) {
-      setDarkMode(JSON.parse(savedDarkMode));
-    }
+    try {
+      const savedItems = localStorage.getItem('shoppingList');
+      const savedDarkMode = localStorage.getItem('darkMode');
+      const savedTemplates = localStorage.getItem('shoppingTemplates');
+      const savedCategories = localStorage.getItem('shoppingCategories');
+      const savedStores = localStorage.getItem('shoppingStores');
+      const savedStoresToVisit = localStorage.getItem('shoppingStoresToVisit');
+      const savedBudget = localStorage.getItem('shoppingBudget');
+      const savedCategoryBudgets = localStorage.getItem('shoppingCategoryBudgets');
+      const savedListViewMode = localStorage.getItem('shoppingListViewMode');
+      const savedFridgeItems = localStorage.getItem('shoppingFridgeItems');
+      const savedRecipes = localStorage.getItem('shoppingRecipes');
+      
+      if (savedItems) {
+        setItems(JSON.parse(savedItems));
+      }
+      
+      if (savedDarkMode) {
+        setDarkMode(JSON.parse(savedDarkMode));
+      }
 
-    if (savedTemplates) {
-      setTemplates(JSON.parse(savedTemplates));
-    }
+      if (savedTemplates) {
+        setTemplates(JSON.parse(savedTemplates));
+      }
 
-    if (savedCategories) {
-      setCategories(JSON.parse(savedCategories));
-    }
+      if (savedCategories) {
+        setCategories(JSON.parse(savedCategories));
+      }
 
-    if (savedStores) {
-      setStores(JSON.parse(savedStores));
-    }
+      if (savedStores) {
+        setStores(JSON.parse(savedStores));
+      }
 
-    if (savedStoresToVisit) {
-      setStoresToVisit(JSON.parse(savedStoresToVisit));
-    }
+      if (savedStoresToVisit) {
+        setStoresToVisit(JSON.parse(savedStoresToVisit));
+      }
 
-    if (savedBudget) {
-      setBudget(JSON.parse(savedBudget));
-    }
+      if (savedBudget) {
+        setBudget(JSON.parse(savedBudget));
+      }
 
-    if (savedCategoryBudgets) {
-      setCategoryBudgets(JSON.parse(savedCategoryBudgets));
-    }
-    
-    if (savedListViewMode) {
-      setListViewMode(JSON.parse(savedListViewMode));
-    }
-    
-    if (savedFridgeItems) {
-      setFridgeItems(JSON.parse(savedFridgeItems));
-    }
-    
-    if (savedRecipes) {
-      setRecipes(JSON.parse(savedRecipes));
+      if (savedCategoryBudgets) {
+        setCategoryBudgets(JSON.parse(savedCategoryBudgets));
+      }
+      
+      if (savedListViewMode) {
+        setListViewMode(JSON.parse(savedListViewMode));
+      }
+      
+      if (savedFridgeItems) {
+        setFridgeItems(JSON.parse(savedFridgeItems));
+      }
+      
+      if (savedRecipes) {
+        setRecipes(JSON.parse(savedRecipes));
+      }
+    } catch (e) {
+      console.error("Błąd podczas ładowania danych z localStorage:", e);
+      setError("Wystąpił problem podczas ładowania zapisanych danych. Niektóre dane mogły zostać utracone.");
     }
   }, []);
 
-  // Zapis danych do localStorage
+  // Bezpieczne zapisywanie do localStorage z debounce
+  const saveToLocalStorage = (key, data) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+      console.error(`Błąd podczas zapisywania ${key} do localStorage:`, e);
+      setError("Wystąpił problem podczas zapisywania danych. Zmiany mogą nie zostać zachowane.");
+    }
+  };
+  
+  // Debounce dla zapisywania często aktualizowanych danych
   useEffect(() => {
-    localStorage.setItem('shoppingList', JSON.stringify(items));
-    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    const debouncedSave = setTimeout(() => {
+      saveToLocalStorage('shoppingList', items);
+      saveToLocalStorage('darkMode', darkMode);
+    }, 500);
+    
+    return () => clearTimeout(debouncedSave);
   }, [items, darkMode]);
 
   useEffect(() => {
-    localStorage.setItem('shoppingTemplates', JSON.stringify(templates));
+    saveToLocalStorage('shoppingTemplates', templates);
   }, [templates]);
 
   useEffect(() => {
-    localStorage.setItem('shoppingCategories', JSON.stringify(categories));
+    saveToLocalStorage('shoppingCategories', categories);
   }, [categories]);
 
   useEffect(() => {
-    localStorage.setItem('shoppingStores', JSON.stringify(stores));
+    saveToLocalStorage('shoppingStores', stores);
   }, [stores]);
 
   useEffect(() => {
-    localStorage.setItem('shoppingStoresToVisit', JSON.stringify(storesToVisit));
+    saveToLocalStorage('shoppingStoresToVisit', storesToVisit);
   }, [storesToVisit]);
 
   useEffect(() => {
-    localStorage.setItem('shoppingBudget', JSON.stringify(budget));
+    saveToLocalStorage('shoppingBudget', budget);
   }, [budget]);
 
   useEffect(() => {
-    localStorage.setItem('shoppingCategoryBudgets', JSON.stringify(categoryBudgets));
+    saveToLocalStorage('shoppingCategoryBudgets', categoryBudgets);
   }, [categoryBudgets]);
   
   useEffect(() => {
-    localStorage.setItem('shoppingListViewMode', JSON.stringify(listViewMode));
+    saveToLocalStorage('shoppingListViewMode', listViewMode);
   }, [listViewMode]);
   
   useEffect(() => {
-    localStorage.setItem('shoppingFridgeItems', JSON.stringify(fridgeItems));
+    saveToLocalStorage('shoppingFridgeItems', fridgeItems);
   }, [fridgeItems]);
   
   useEffect(() => {
-    localStorage.setItem('shoppingRecipes', JSON.stringify(recipes));
+    saveToLocalStorage('shoppingRecipes', recipes);
   }, [recipes]);
 
   // Funkcje UI
@@ -172,6 +217,18 @@ function App() {
   
   const toggleListViewMode = () => {
     setListViewMode(listViewMode === 'standard' ? 'grouped' : 'standard');
+  };
+  
+  // Zmiana aktywnego widoku z nawigacją
+  const handleViewChange = (view) => {
+    setActiveView(view);
+    
+    // Przekierowanie do odpowiedniej ścieżki, jeśli trzeba
+    if (view === 'recipes') {
+      navigate('/recipes');
+    } else {
+      navigate('/');
+    }
   };
   
   // Funkcja do dodawania wielu przedmiotów na raz (np. z planera menu)
@@ -188,6 +245,30 @@ function App() {
     
     if (uniqueNewItems.length > 0) {
       setItems([...items, ...uniqueNewItems]);
+      
+      // Synchronizacja - aktualizacja stanu lodówki po dodaniu do listy zakupów
+      // Zmniejszamy ilość w lodówce po dodaniu do zakupów
+      const updatedFridgeItems = [...fridgeItems];
+      uniqueNewItems.forEach(newItem => {
+        const fridgeItemIndex = updatedFridgeItems.findIndex(item => 
+          item.name.toLowerCase() === newItem.name.toLowerCase() && 
+          item.unit === newItem.unit
+        );
+        
+        if (fridgeItemIndex !== -1) {
+          const fridgeItem = updatedFridgeItems[fridgeItemIndex];
+          const newQuantity = Math.max(0, parseFloat(fridgeItem.quantity) - parseFloat(newItem.quantity || 0));
+          
+          if (newQuantity > 0) {
+            updatedFridgeItems[fridgeItemIndex] = { ...fridgeItem, quantity: newQuantity };
+          } else {
+            // Usuń przedmiot z lodówki jeśli ilość jest 0
+            updatedFridgeItems.splice(fridgeItemIndex, 1);
+          }
+        }
+      });
+      
+      setFridgeItems(updatedFridgeItems);
     }
   };
   
@@ -232,8 +313,8 @@ function App() {
         id: Date.now() + Math.random(), // Generujemy nowe unikalne ID
         completed: false,
         stores: item.stores || [], // Zachowujemy przypisane sklepy
-        price: item.price || 0,     // Zachowujemy cenę
-        quantity: item.quantity || 1 // Zachowujemy ilość
+        price: price => typeof price === 'number' ? price : 0,     // Bezpieczna konwersja ceny
+        quantity: quantity => typeof quantity === 'number' && quantity > 0 ? quantity : 1 // Bezpieczna konwersja ilości
       }));
     
     if (newItems.length > 0) {
@@ -295,10 +376,12 @@ function App() {
         { ...recipe, category: newName.trim() } : recipe;
       
       // Aktualizujemy kategorie składników przepisu
-      updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => 
-        ingredient.category === oldName ? 
-          { ...ingredient, category: newName.trim() } : ingredient
-      );
+      if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
+        updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => 
+          ingredient.category === oldName ? 
+            { ...ingredient, category: newName.trim() } : ingredient
+        );
+      }
       
       return updatedRecipe;
     }));
@@ -354,10 +437,12 @@ function App() {
         { ...recipe, category: fallbackCategory } : recipe;
       
       // Aktualizujemy kategorie składników przepisu
-      updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => 
-        ingredient.category === categoryName ? 
-          { ...ingredient, category: fallbackCategory } : ingredient
-      );
+      if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
+        updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => 
+          ingredient.category === categoryName ? 
+            { ...ingredient, category: fallbackCategory } : ingredient
+        );
+      }
       
       return updatedRecipe;
     }));
@@ -413,10 +498,12 @@ function App() {
       };
       
       // Aktualizujemy kategorie składników przepisu
-      updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => ({
-        ...ingredient,
-        category: categoryMap[ingredient.category] || DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
-      }));
+      if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
+        updatedRecipe.ingredients = updatedRecipe.ingredients.map(ingredient => ({
+          ...ingredient,
+          category: categoryMap[ingredient.category] || DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
+        }));
+      }
       
       return updatedRecipe;
     }));
@@ -512,18 +599,35 @@ function App() {
   };
 
   const updateItemPrice = (itemId, price, quantity) => {
-    setItems(items.map(item => 
-      item.id === itemId 
-        ? { ...item, price, quantity } 
-        : item
-    ));
+    try {
+      const parsedPrice = parseFloat(price);
+      const parsedQuantity = parseFloat(quantity);
+      
+      // Sprawdzanie czy dane są poprawne
+      if (isNaN(parsedPrice) || isNaN(parsedQuantity) || parsedQuantity <= 0) {
+        throw new Error("Nieprawidłowa cena lub ilość");
+      }
+      
+      setItems(items.map(item => 
+        item.id === itemId 
+          ? { ...item, price: parsedPrice, quantity: parsedQuantity } 
+          : item
+      ));
+    } catch (e) {
+      console.error("Błąd podczas aktualizacji ceny produktu:", e);
+      setError("Wprowadzono nieprawidłową cenę lub ilość. Sprawdź dane i spróbuj ponownie.");
+    }
   };
 
   // Obliczanie aktualnych kosztów dla listy zakupów
   const calculateTotalCost = () => {
     return items.reduce((total, item) => {
       if (!item.completed && item.price) {
-        return total + (item.price * (item.quantity || 1));
+        const price = parseFloat(item.price) || 0;
+        const quantity = parseFloat(item.quantity) || 1;
+        if (!isNaN(price) && !isNaN(quantity)) {
+          return total + (price * quantity);
+        }
       }
       return total;
     }, 0);
@@ -537,19 +641,48 @@ function App() {
   
   // Zapisywanie przepisu
   const saveRecipe = (recipe) => {
-    // Jeśli przepis ma już ID, aktualizujemy go
-    if (recipe.id) {
-      setRecipes(recipes.map(r => 
-        r.id === recipe.id ? recipe : r
-      ));
-    } else {
-      // W przeciwnym razie dodajemy nowy przepis
-      const newRecipe = {
-        ...recipe,
-        id: Date.now(),
-        createdAt: new Date().toISOString()
-      };
-      setRecipes([...recipes, newRecipe]);
+    try {
+      // Walidacja danych przepisu
+      if (!recipe.name || recipe.name.trim() === '') {
+        throw new Error("Nazwa przepisu jest wymagana");
+      }
+      
+      if (!recipe.ingredients || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) {
+        throw new Error("Przepis musi zawierać co najmniej jeden składnik");
+      }
+      
+      // Walidacja składników
+      recipe.ingredients.forEach(ingredient => {
+        if (!ingredient.name || ingredient.name.trim() === '') {
+          throw new Error("Wszystkie składniki muszą mieć nazwę");
+        }
+        
+        const quantity = parseFloat(ingredient.quantity);
+        if (isNaN(quantity) || quantity <= 0) {
+          throw new Error(`Nieprawidłowa ilość dla składnika ${ingredient.name}`);
+        }
+      });
+      
+      // Jeśli przepis ma już ID, aktualizujemy go
+      if (recipe.id) {
+        setRecipes(recipes.map(r => 
+          r.id === recipe.id ? recipe : r
+        ));
+      } else {
+        // W przeciwnym razie dodajemy nowy przepis
+        const newRecipe = {
+          ...recipe,
+          id: Date.now(),
+          createdAt: new Date().toISOString()
+        };
+        setRecipes([...recipes, newRecipe]);
+      }
+      
+      // Przejście z powrotem do listy przepisów po zapisie
+      navigate('/recipes');
+    } catch (e) {
+      console.error("Błąd podczas zapisywania przepisu:", e);
+      setError(e.message || "Wystąpił błąd podczas zapisywania przepisu");
     }
   };
   
@@ -643,47 +776,50 @@ function App() {
     );
   };
 
-  // Komponent renderujący widok przepisów
-  const RecipesRoutes = () => (
-    <Routes>
-      <Route path="/" element={
-        <RecipesView
-          recipes={recipes}
-          deleteRecipe={deleteRecipe}
-          categories={categories}
-          darkMode={darkMode}
-        />
-      } />
-      <Route path="/recipe/:id" element={
-        <RecipeDetail
-          recipes={recipes}
-          addItemsToShoppingList={addItemsToShoppingList}
-          fridgeItems={fridgeItems}
-          darkMode={darkMode}
-        />
-      } />
-      <Route path="/recipe/edit/:id" element={
-        <RecipeEditor
-          recipes={recipes}
-          saveRecipe={saveRecipe}
-          categories={categories}
-          darkMode={darkMode}
-        />
-      } />
-      <Route path="/recipe/new" element={
-        <RecipeEditor
-          recipes={recipes}
-          saveRecipe={saveRecipe}
-          categories={categories}
-          darkMode={darkMode}
-        />
-      } />
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
-  );
-
-  // Renderowanie odpowiedniego widoku
-  const renderActiveView = () => {
+  // Render głównego widoku na podstawie ścieżki i activeView
+  const renderMainContent = () => {
+    // Jeśli jesteśmy na ścieżce /recipes, renderuj Routes dla przepisów
+    if (location.pathname.startsWith('/recipes')) {
+      return (
+        <Routes>
+          <Route path="/recipes" element={
+            <RecipesView
+              recipes={recipes || []}
+              deleteRecipe={deleteRecipe}
+              categories={categories || []}
+              darkMode={darkMode}
+            />
+          } />
+          <Route path="/recipes/recipe/:id" element={
+            <RecipeDetail
+              recipes={recipes || []}
+              addItemsToShoppingList={addItemsToShoppingList}
+              fridgeItems={fridgeItems || []}
+              darkMode={darkMode}
+            />
+          } />
+          <Route path="/recipes/recipe/edit/:id" element={
+            <RecipeEditor
+              recipes={recipes || []}
+              saveRecipe={saveRecipe}
+              categories={categories || []}
+              darkMode={darkMode}
+            />
+          } />
+          <Route path="/recipes/recipe/new" element={
+            <RecipeEditor
+              recipes={recipes || []}
+              saveRecipe={saveRecipe}
+              categories={categories || []}
+              darkMode={darkMode}
+            />
+          } />
+          <Route path="*" element={<Navigate to="/recipes" />} />
+        </Routes>
+      );
+    }
+    
+    // W przeciwnym razie, renderuj widok na podstawie activeView
     switch(activeView) {
       case 'shopping-list':
         return renderShoppingList();
@@ -691,20 +827,22 @@ function App() {
       case 'fridge':
         return (
           <FridgeView
-            fridgeItems={fridgeItems}
+            fridgeItems={fridgeItems || []}
             setFridgeItems={setFridgeItems}
-            categories={categories}
+            categories={categories || []}
             darkMode={darkMode}
           />
         );
         
       case 'recipes':
-        return <RecipesRoutes />;
+        // Jeśli ktoś próbuje uzyskać dostęp do przepisów przez activeView, przekieruj do /recipes
+        navigate('/recipes');
+        return null;
         
       case 'templates':
         return (
           <TemplatesView
-            templates={templates}
+            templates={templates || []}
             loadTemplate={loadTemplate}
             deleteTemplate={deleteTemplate}
             darkMode={darkMode}
@@ -714,7 +852,7 @@ function App() {
       case 'categories':
         return (
           <CategoriesView
-            categories={categories}
+            categories={categories || []}
             addCategory={addCategory}
             editCategory={editCategory}
             deleteCategory={deleteCategory}
@@ -726,7 +864,7 @@ function App() {
       case 'stores':
         return (
           <StoresView
-            stores={stores}
+            stores={stores || []}
             addStore={addStore}
             editStore={editStore}
             deleteStore={deleteStore}
@@ -739,12 +877,12 @@ function App() {
       case 'budget':
         return (
           <BudgetView
-            budget={budget}
+            budget={budget || { total: 0 }}
             updateBudget={updateBudget}
-            categoryBudgets={categoryBudgets}
+            categoryBudgets={categoryBudgets || {}}
             updateCategoryBudget={updateCategoryBudget}
-            items={items}
-            categories={categories}
+            items={items || []}
+            categories={categories || []}
             darkMode={darkMode}
           />
         );
@@ -753,8 +891,8 @@ function App() {
         return (
           <MenuPlannerView
             addItemsToShoppingList={addItemsToShoppingList}
-            recipes={recipes}
-            fridgeItems={fridgeItems}
+            recipes={recipes || []}
+            fridgeItems={fridgeItems || []}
             darkMode={darkMode}
           />
         );
@@ -773,26 +911,44 @@ function App() {
   };
 
   return (
-    <Layout
-      darkMode={darkMode}
-      sidebarOpen={sidebarOpen}
-      toggleSidebar={toggleSidebar}
-      activeView={activeView}
-      setActiveView={setActiveView}
-      toggleDarkMode={toggleDarkMode}
-      itemsCount={items.length}
-      templatesCount={templates.length}
-      categoriesCount={categories.length}
-      storesCount={stores.length}
-      storesToVisitCount={storesToVisit.length}
-      fridgeItemsCount={fridgeItems.length}
-      recipesCount={recipes.length}
-      showBudget={true}
-      budgetAmount={budget?.total || 0}
-      remainingBudget={remainingBudget}
-    >
-      {renderActiveView()}
-    </Layout>
+    <>
+      {/* Komunikat o błędzie */}
+      {error && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white p-4 rounded-lg shadow-lg">
+          <div className="flex items-center">
+            <span className="mr-2">⚠️</span>
+            <p>{error}</p>
+            <button 
+              className="ml-4 text-white hover:text-red-200"
+              onClick={() => setError(null)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      
+      <Layout
+        darkMode={darkMode}
+        sidebarOpen={sidebarOpen}
+        toggleSidebar={toggleSidebar}
+        activeView={activeView}
+        setActiveView={handleViewChange}
+        toggleDarkMode={toggleDarkMode}
+        itemsCount={items?.length || 0}
+        templatesCount={templates?.length || 0}
+        categoriesCount={categories?.length || 0}
+        storesCount={stores?.length || 0}
+        storesToVisitCount={storesToVisit?.length || 0}
+        fridgeItemsCount={fridgeItems?.length || 0}
+        recipesCount={recipes?.length || 0}
+        showBudget={true}
+        budgetAmount={budget?.total || 0}
+        remainingBudget={remainingBudget}
+      >
+        {renderMainContent()}
+      </Layout>
+    </>
   );
 }
 
