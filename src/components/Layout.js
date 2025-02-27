@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Komponent głównego układu aplikacji
-function Layout({ children, darkMode, sidebarOpen, toggleSidebar, activeView, setActiveView, toggleDarkMode, itemsCount, templatesCount, categoriesCount }) {
+function Layout({ children, darkMode, sidebarOpen, toggleSidebar, activeView, setActiveView, toggleDarkMode, itemsCount, templatesCount, categoriesCount, storesCount, storesToVisitCount }) {
   return (
     <div className={`${darkMode ? 'dark bg-gray-900 text-white' : 'bg-white text-black'} min-h-screen transition-colors duration-300 flex`}>
       {/* Overlay tła przy otwartym sidebar na mobilnych urządzeniach */}
@@ -42,6 +42,27 @@ function Layout({ children, darkMode, sidebarOpen, toggleSidebar, activeView, se
                 <span className="mr-3">🛒</span>
                 <span className="flex-grow">Lista Zakupów</span>
                 <span className={`px-2 py-1 rounded-full text-xs ${darkMode ? 'bg-blue-600' : 'bg-blue-200'}`}>{itemsCount}</span>
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => setActiveView('stores')}
+                className={`w-full text-left flex items-center p-3 rounded-lg transition-colors ${
+                  activeView === 'stores' 
+                    ? (darkMode ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800') 
+                    : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200')
+                }`}
+              >
+                <span className="mr-3">🏪</span>
+                <span className="flex-grow">Sklepy</span>
+                <div className="flex">
+                  <span className={`px-2 py-1 rounded-full text-xs ${darkMode ? 'bg-blue-600' : 'bg-blue-200'}`}>{storesCount || 0}</span>
+                  {storesToVisitCount > 0 && (
+                    <span className={`ml-1 px-2 py-1 rounded-full text-xs ${darkMode ? 'bg-green-600' : 'bg-green-200'}`} title="Do odwiedzenia">
+                      {storesToVisitCount}
+                    </span>
+                  )}
+                </div>
               </button>
             </li>
             <li>
@@ -113,6 +134,7 @@ function Layout({ children, darkMode, sidebarOpen, toggleSidebar, activeView, se
           
           <h1 className="text-lg font-bold ml-2">
             {activeView === 'shopping-list' && 'Lista Zakupów'}
+            {activeView === 'stores' && 'Sklepy'}
             {activeView === 'templates' && 'Szablony'}
             {activeView === 'categories' && 'Kategorie'}
             {activeView === 'settings' && 'Ustawienia'}
